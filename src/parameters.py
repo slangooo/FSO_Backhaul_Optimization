@@ -25,7 +25,7 @@ MBS_LOCATIONS = [Coords3d(X_BOUNDARY[0], Y_BOUNDARY[0], MBS_HEIGHT), Coords3d(X_
 
 NUM_UAVS = 10 #Number of DBSs. We can increase it if FSO capacities are insufficient, etc.
 
-REQUIRED_UE_RATE = 15e6 #Required Mbps per UE. It can be increased to make the problem harder,
+REQUIRED_UE_RATE = 10e6 #Required Mbps per UE. It can be increased to make the problem harder,
                         # or decrease to relax constraint
 
 MAX_FSO_DISTANCE = 4000 #FSO links between nodes that have distance higher than this are assumed to have capacity 0

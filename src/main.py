@@ -1,6 +1,8 @@
 #  Copyright (c) 2023. Salim Janji.
 #   All rights reserved.
 from src.main_controller import SimulationController
+from src.parameters import NUM_MBS
+import numpy as np
 
 if __name__ == '__main__':
 
@@ -29,3 +31,22 @@ if __name__ == '__main__':
     #Call this to generate new UEs distribution
     sim_ctrl.reset_users_model()
 
+    #The controller has the MBSs and DBSs in self.base_stations
+    #The MBSs are in the slice [:NUM_MBS] and DBSs are in [NUM_MBS:]
+    mbs_list = sim_ctrl.base_stations[:NUM_MBS]
+    dbs_list = sim_ctrl.base_stations[NUM_MBS:]
+
+    #Each DBS has coords attribute (which can also behave like numpy array)
+    print(dbs_list[0].coords.x, dbs_list[0].coords.y, dbs_list[0].coords.z)
+    np.sum(dbs_list[0].coords)
+
+    #Alternatively we can get locations of all DBSs as arrays
+    print(sim_ctrl.get_uavs_locs())
+    print(np.sum(sim_ctrl.get_uavs_locs(), 1)) # just to show it behaves like array
+
+    #We can also get the FSO capacities as 2D array where the indexes are indexes of DBSs.
+    # I.e., element i,j s.t. i=j is redundant. Otherwise the array show the capacity between the ith DBS and jth DBS
+    print(sim_ctrl.fso_links_capacs)
+
+    #To get required capacity from UEs load per DBS
+    print(sim_ctrl.get_required_capacity_per_dbs())
