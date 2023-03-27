@@ -25,7 +25,7 @@ MBS_LOCATIONS = [Coords3d(X_BOUNDARY[0], Y_BOUNDARY[0], MBS_HEIGHT), Coords3d(X_
 
 NUM_UAVS = 10 #Number of DBSs. We can increase it if FSO capacities are insufficient, etc.
 
-REQUIRED_UE_RATE = 10e6 #Required Mbps per UE. It can be increased to make the problem harder,
+REQUIRED_UE_RATE = 5e6 #Required Mbps per UE. It can be increased to make the problem harder,
                         # or decrease to relax constraint
 
 MAX_FSO_DISTANCE = 4000 #FSO links between nodes that have distance higher than this are assumed to have capacity 0
@@ -136,3 +136,8 @@ UE_HEIGHT = 1.5  # To conform with channel models
 MAX_USERS_PER_DRONE = DRONE_BANDWIDTH/ USER_BANDWIDTH
 # USER_MOBILITY_SAVE_NAME = 'users_200_truncated'
 USER_MOBILITY_SAVE_NAME = 'extended_4_madrids_500_users'
+
+# Calculate solution for drone FSO connection in exact way, exponential time, only for small number of drones
+CALCULATE_EXACT_FSO_NET_SOLUTION = False
+# Time limit in seconds for genetic algorithm searching solution for FSO net
+FSO_NET_GENECTIC_ALGORITHM_TIME_LIMIT = 10

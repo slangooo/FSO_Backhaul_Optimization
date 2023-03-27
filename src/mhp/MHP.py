@@ -110,6 +110,38 @@ class DroneNet:
                 
         return dn
     
+    # mbs_list : Main base stations list
+    # dbs_list : Drone base station list
+    # required_capacity_per_dbs : required capacity per drone base station
+    # fso_links_capacs : FSO links capacities
+    @staticmethod
+    def createArea(mbs_list, dbs_list, required_capacity_per_dbs, fso_links_capacs):
+        drone_number = len(dbs_list)
+        base_number  = len(mbs_list)
+        dn = DroneNet(drone_number, base_number)
+        
+        for i in range(base_number):
+            imod = drone_number + i
+            dn.labels[imod] = "B " + str(mbs_list[i].id)
+            dn.longlabels[imod] = "Base[" + str(mbs_list[i].id) + "]"
+            dn.pos[imod] = [mbs_list[i].coords.x, mbs_list[i].coords.y]
+        
+        for i in range(drone_number):
+            dn.labels[i] = "D " + str(dbs_list[i].id)
+            dn.bandwidth[i] = required_capacity_per_dbs[i] / 1e6
+            dn.longlabels[i] = "D[" + str(dbs_list[i].id) + "] +" + str(dn.bandwidth[i])
+            dn.pos[i] = [dbs_list[i].coords.x, dbs_list[i].coords.y]
+        
+        for i in range(base_number + drone_number):
+            for j in range(i):
+                imod = i + drone_number if i < base_number else i - base_number
+                jmod = j + drone_number if j < base_number else j - base_number
+                cap = fso_links_capacs[i,j]
+                dn.net[imod][jmod] = cap
+                dn.net[jmod][imod] = cap
+                
+        return dn
+    
     def lookForChainSolution(self, first = True, mode = 'any'):
         results = []
         start = time.time()
@@ -457,7 +489,7 @@ class DroneNet:
         
     def printSolution(self):
         for baseIndex in range(self.drone_number, self.node_number()):
-            print(self.labels[baseIndex], end="")
+            print(self.longlabels[baseIndex], end="")
             
             solbasePrevNode = baseIndex
             for solbaseIndex, solbaseNode in enumerate(self.chainsOrder[baseIndex]):
@@ -492,8 +524,9 @@ class DroneNet:
         
         print('==========================================')
         
-    def draw(self, showSolution = False):
-        G = networkx.from_numpy_matrix(self.net)
+    def draw(self, showSolution = False, fileName = None):
+        #G = networkx.from_numpy_matrix(self.net)
+        G = networkx.Graph(self.net)
         
         edgelist = list(G.edges())
         
@@ -501,42 +534,62 @@ class DroneNet:
         edge_width = list()
         edge_color = list()
         edge_to_index = {}
+        
+        maxEdgeValue = 1;
+        for edgeIndex, edge in enumerate(edgelist):
+            maxEdgeValue = max(maxEdgeValue, self.net[edge[1]][edge[0]])
+            
         for edgeIndex, edge in enumerate(edgelist):
             edge_to_index[(edge[0], edge[1])] = edgeIndex
             if (not showSolution):
                 edge_labels[(edge[0], edge[1])] = self.net[edge[1]][edge[0]]
-            edge_width.append(1 if showSolution else self.net[edge[1]][edge[0]])
+            edge_width.append(1 if showSolution else 10*self.net[edge[1]][edge[0]]/maxEdgeValue)
             edge_color.append("#696969") #DimGray
             
         node_size  = numpy.empty(self.node_number())
         node_color = numpy.array(["#000000"] * self.node_number())
+        dark_color = numpy.array(["#000000"] * self.node_number())
+        edgecolors = numpy.array(["#000000"] * self.node_number())
+        
+        maxNodeValue = 1;
         for i in range(self.drone_number):
-            node_size [i] = self.bandwidth[i] * 1000
+            maxNodeValue = max(maxNodeValue, self.bandwidth[i])
+        
+        for i in range(self.drone_number):
+            node_size [i] = self.bandwidth[i] * 10000 / maxNodeValue
             node_color[i] = "#D2B48C" #Tan
+            edgecolors[i] = "#888888"
         for i in range(self.base_number):
             node_size [self.drone_number + i] = 2500
             if i == 0:
                 node_color[self.drone_number + i] = "#87CEEB" #SkyBlue
+                dark_color[self.drone_number + i] = "#67AECB"
             elif i == 1:
                 node_color[self.drone_number + i] = "#FF7F50" #Coral
+                dark_color[self.drone_number + i] = "#DF5F30"
             elif i == 2:
                 node_color[self.drone_number + i] = "#90EE90" #LightGreen
+                dark_color[self.drone_number + i] = "#70CE70"
             elif i == 3:
                 node_color[self.drone_number + i] = "#DDA0DD" #Plum
+                dark_color[self.drone_number + i] = "#BD80BD"
             else:
                 node_color[self.drone_number + i] = "#DAA520" #GoldenRod
+                dark_color[self.drone_number + i] = "#BA8500"
                 
         if (showSolution):
             for baseIndex in range(self.drone_number, self.node_number()):
                 baseColor = node_color[baseIndex]
+                darkColor = dark_color[baseIndex]
                 prevNodeIndex = baseIndex
                 for chainIndex, nodeIndex in enumerate(self.chainsOrder[baseIndex]):
                     key = (prevNodeIndex, nodeIndex) if prevNodeIndex < nodeIndex else (nodeIndex, prevNodeIndex)
                     edgeIndex = edge_to_index[key]
                     
                     node_color[nodeIndex] = baseColor
+                    edgecolors[nodeIndex] = darkColor
                     edge_color[edgeIndex] = baseColor
-                    edge_width[edgeIndex] = 10
+                    edge_width[edgeIndex] = 10 * self.net[prevNodeIndex][nodeIndex] / maxEdgeValue
                     
                     edge_labels[key] = str(self.chainsFlows[baseIndex][chainIndex]) + "/" + str(self.net[prevNodeIndex][nodeIndex])
                     
@@ -550,7 +603,7 @@ class DroneNet:
             ax         = ax,
             node_size  = node_size,
             node_color = node_color,
-            edgecolors = "#000000")
+            edgecolors = edgecolors)
         networkx.draw_networkx_labels(
             G,
             self.pos,
@@ -559,16 +612,18 @@ class DroneNet:
         networkx.draw_networkx_edges(
             G,
             self.pos,
-            ax              = ax,
-            edgelist        = edgelist,
-            edge_color      = edge_color,
-            width           = edge_width,
-            connectionstyle = "arc3,rad=0.2")
+            ax         = ax,
+            edgelist   = edgelist,
+            edge_color = edge_color,
+            width      = edge_width)
         networkx.draw_networkx_edge_labels(
             G,
             self.pos,
             ax=ax,
             edge_labels=edge_labels)
+        
+        if fileName is not None:
+            matplotlib.pyplot.savefig(fileName, dpi=300, bbox_inches='tight')
 
 class ExactSolution:
     def __init__(self, droneNet: DroneNet, found, firstTime, fullTime, results):
@@ -641,7 +696,7 @@ class GASolution:
         self.score    = score
         self.result   = result
         
-    def print(self, exact : ExactSolution = None, draw = False, plotFitness = False):
+    def print(self, exact : ExactSolution = None, draw = False, drawFileName = None, plotFitness = False):
         print('==========================================')
         print("Time : {executionTime} s".format(executionTime=int(self.time)))
         if self.found:
@@ -662,14 +717,14 @@ class GASolution:
                 print('  val {score} / {best} = {gaSol}%'.format(score = self.score, best = exact.bestScore, gaSol = int(100*gaSol)/100))
                 print('  top {gaTop} / {all} = {gaPos}%'.format(gaTop = gaTop, all = lenResults, gaPos = int(100*gaPos)/100))
                 
-                self.droneNet.processChainSolution(self.result)
-                self.droneNet.printSolution()
+            self.droneNet.processChainSolution(self.result)
+            self.droneNet.printSolution()
                 
-                if draw:
-                    self.droneNet.draw(True)
-                
-                if plotFitness:
-                    self.ga.plot_fitness(show=False)
+            if draw:
+                self.droneNet.draw(showSolution = True, fileName = drawFileName)
+            
+            if plotFitness:
+                self.ga.plot_fitness(show=False)
         else:
             print('Genetic algorithm fail')
         

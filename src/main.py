@@ -3,6 +3,8 @@
 from src.main_controller import SimulationController
 from src.parameters import NUM_MBS
 from src.mhp.MHP import DroneNet
+from src.mhp.MHP import GenAlg
+from src.parameters import CALCULATE_EXACT_FSO_NET_SOLUTION, FSO_NET_GENECTIC_ALGORITHM_TIME_LIMIT
 import numpy as np
 
 if __name__ == '__main__':
@@ -51,3 +53,21 @@ if __name__ == '__main__':
 
     #To get required capacity from UEs load per DBS
     print(sim_ctrl.get_required_capacity_per_dbs())
+    
+    # Construct drone net
+    dn = DroneNet.createArea(mbs_list, dbs_list, sim_ctrl.get_required_capacity_per_dbs(), sim_ctrl.fso_links_capacs)
+    dn.print()
+    
+    #Exact solution, long time
+    if CALCULATE_EXACT_FSO_NET_SOLUTION:
+        exactSolution = dn.lookForChainSolution(first=False, mode='bestNodes')
+        exactSolution.print()
+        if exactSolution.found:
+            ga = GenAlg(timeLimit=FSO_NET_GENECTIC_ALGORITHM_TIME_LIMIT)
+            gaSolution = ga.run(dn)
+            gaSolution.print(exactSolution)
+    else:
+        ga = GenAlg(timeLimit=FSO_NET_GENECTIC_ALGORITHM_TIME_LIMIT)
+        gaSolution = ga.run(dn)
+        #gaSolution.print(draw = True, drawFileName = 'FSO_net_ga_solution')
+        gaSolution.print()
