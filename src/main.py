@@ -2,6 +2,7 @@
 #   All rights reserved.
 from src.main_controller import SimulationController
 from src.parameters import NUM_MBS
+from src.mhp.MHP import DroneNet
 import numpy as np
 
 if __name__ == '__main__':
