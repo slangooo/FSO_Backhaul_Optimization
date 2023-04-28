@@ -17,7 +17,7 @@ Y_BOUNDARY = [0, 10000]
 SIGMA_UE_PER_CLUSTER = 200 # Variance of UEs in each cluster (larger value -> more dispersion)
 CLUSTERS_DENSITY = 0.000002 #Cluster density in area
 N_CLUSTERS = X_BOUNDARY[1]*Y_BOUNDARY[1]*CLUSTERS_DENSITY #Resulting number of clusters
-MEAN_UES_PER_CLUSTER = 10 #Mean number of UEs in cluster
+MEAN_UES_PER_CLUSTER = 5 #Mean number of UEs in cluster
 
 #Add MBS here below as needed
 MBS_HEIGHT = 25  # m
@@ -25,10 +25,12 @@ MBS_LOCATIONS = [Coords3d(X_BOUNDARY[0], Y_BOUNDARY[0], MBS_HEIGHT), Coords3d(X_
 
 NUM_UAVS = 10 #Number of DBSs. We can increase it if FSO capacities are insufficient, etc.
 
-REQUIRED_UE_RATE = 5e6 #Required Mbps per UE. It can be increased to make the problem harder,
+REQUIRED_UE_RATE = 6e6 #Required Mbps per UE. It can be increased to make the problem harder,
                         # or decrease to relax constraint
 
 MAX_FSO_DISTANCE = 4000 #FSO links between nodes that have distance higher than this are assumed to have capacity 0
+
+TX_POWER_FSO_DRONE = 0.2  # W
 ###########################################
 
 
@@ -97,7 +99,7 @@ AVG_GML = 3
 WEATHER_COEFF = 4.3 * 10 ** -4  # /m
 POWER_SPLIT_RATIO = 0.005
 FSO_ENERGY_HARVESTING_EFF = 0.2
-TX_POWER_FSO_DRONE = 0.2  # W
+
 TX_POWER_FSO_MBS = 380  # W
 BANDWIDTH_FSO = 1e9  # Hz
 NOISE_VARIANCE_FSO = 0.8 * 1e-9
@@ -138,6 +140,6 @@ MAX_USERS_PER_DRONE = DRONE_BANDWIDTH/ USER_BANDWIDTH
 USER_MOBILITY_SAVE_NAME = 'extended_4_madrids_500_users'
 
 # Calculate solution for drone FSO connection in exact way, exponential time, only for small number of drones
-CALCULATE_EXACT_FSO_NET_SOLUTION = False
+CALCULATE_EXACT_FSO_NET_SOLUTION = True
 # Time limit in seconds for genetic algorithm searching solution for FSO net
 FSO_NET_GENECTIC_ALGORITHM_TIME_LIMIT = 10

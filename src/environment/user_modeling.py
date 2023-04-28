@@ -70,20 +70,20 @@ class ThomasClusterProcess(UserSpatialModel):
     clusters_centers = None
     n_users = 0
 
-    def __init__(self):
+    def __init__(self, mean_ues_per_cluster=MEAN_UES_PER_CLUSTER):
         self.rng = np.random.default_rng()
-        self.generate_distribution()
+        self.generate_distribution(mean_ues_per_cluster)
 
     def populate_num_of_clusters(self):
         self.n_clusters = self.rng.poisson(N_CLUSTERS)
 
-    def populate_num_of_ues_per_cluster(self):
-        self.n_ues_per_cluster = self.rng.poisson(MEAN_UES_PER_CLUSTER, (self.n_clusters))
+    def populate_num_of_ues_per_cluster(self, mean_ues_per_cluster):
+        self.n_ues_per_cluster = self.rng.poisson(mean_ues_per_cluster, (self.n_clusters))
         self.n_users = self.n_ues_per_cluster.sum()
 
-    def generate_distribution(self):
+    def generate_distribution(self, mean_ues_per_cluster=MEAN_UES_PER_CLUSTER):
         self.populate_num_of_clusters()
-        self.populate_num_of_ues_per_cluster()
+        self.populate_num_of_ues_per_cluster(mean_ues_per_cluster)
         clusters_xs = (X_BOUNDARY[1] - X_BOUNDARY[0]) * np.random.uniform(0, 1, self.n_clusters)
         clusters_ys = (Y_BOUNDARY[1] - Y_BOUNDARY[0]) * np.random.uniform(0, 1, self.n_clusters)
         self.clusters_centers = np.stack((clusters_xs, clusters_ys), 1)

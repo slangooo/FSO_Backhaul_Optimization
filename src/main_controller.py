@@ -9,7 +9,7 @@ from src.macro_base_station import MacroBaseStation
 import numpy as np
 from src.parameters import TX_POWER_FSO_MBS, TX_POWER_FSO_DRONE, NUM_UAVS, NUM_MBS, NUM_OF_USERS, \
     USER_MOBILITY_SAVE_NAME, TIME_STEP,  DRONE_HEIGHT, SKIP_ENERGY_UPDATE, X_BOUNDARY, Y_BOUNDARY, MBS_LOCATIONS,\
-    REQUIRED_UE_RATE, MAX_FSO_DISTANCE
+    REQUIRED_UE_RATE, MAX_FSO_DISTANCE,MEAN_UES_PER_CLUSTER
 from src.environment.user_modeling import ThomasClusterProcess
 
 from src.data_structures import Coords3d
@@ -32,6 +32,7 @@ class SimulationController:
     users = []
     fso_links_capacs = None
     base_stations = None
+    ue_required_rate = REQUIRED_UE_RATE
 
     def __init__(self, initial_uavs_coords=None,  n_users=NUM_OF_USERS):
         self.reset_users_model()
@@ -42,15 +43,15 @@ class SimulationController:
         self.init_users_rfs()
         self.stations_list = []
 
-    def reset_users_model(self):
-        self.users_model = ThomasClusterProcess()
+    def reset_users_model(self, mean_ues_per_cluster=MEAN_UES_PER_CLUSTER):
+        self.users_model = ThomasClusterProcess(mean_ues_per_cluster)
         self.users = [User(self.users_model.users[i])
                       for i in range(self.users_model.n_users)]
         if self.base_stations:
             self.init_users_rfs()
 
 
-    def get_fso_capacities(self):
+    def get_fso_capacities(self, max_fso_distance=MAX_FSO_DISTANCE, fso_transmit_power=TX_POWER_FSO_DRONE):
         dbs_locs = [dbs.coords for dbs in self.base_stations]
         n_dbs = len(dbs_locs)
         poss_links_capacs = np.zeros((n_dbs, n_dbs))
@@ -60,10 +61,10 @@ class SimulationController:
                 if idx_i == idx_j:
                     continue
 
-                if dbs_i.coords.get_distance_to(dbs_j.coords) > MAX_FSO_DISTANCE:
+                if dbs_i.coords.get_distance_to(dbs_j.coords) > max_fso_distance:
                     continue
                 _, capacity = StatisticalModel.get_charge_power_and_capacity(dbs_i.coords, dbs_j.coords,
-                                                                             transmit_power=TX_POWER_FSO_DRONE,
+                                                                             transmit_power=fso_transmit_power,
                                                                              power_split_ratio=1)
                 capacity = int(capacity / 1e6) #In MB
                 poss_links_capacs[idx_i, idx_j] = capacity if capacity > 0 else 0
@@ -71,10 +72,10 @@ class SimulationController:
         return poss_links_capacs
 
     def perform_sinr_en(self):
-        perform_sinr_em(self.users, self.base_stations[NUM_MBS:])
+        return perform_sinr_em(self.users, self.base_stations[NUM_MBS:])
 
     def get_required_capacity_per_dbs(self):
-        return np.array([_bs.n_associated_users * REQUIRED_UE_RATE for _bs in self.bs_rf_list])
+        return np.array([_bs.n_associated_users * self.ue_required_rate for _bs in self.bs_rf_list])
 
     def update_sinr_coverage_scores(self):
         [_user.rf_transceiver.update_sinr_coverage_score(self.steps_count) for _user in self.users]
@@ -173,7 +174,18 @@ class SimulationController:
                                        drone_id=i + 1)  # ,
             # carrier_frequency=UAVS_FREQS[i])
             self.base_stations.append(new_station)
-        self.base_stations = tuple(self.base_stations)
+        self.base_stations = self.base_stations
+
+    def add_drone_stations(self, n_drones, irradiation_manager=None):
+        for i in range(n_drones):
+            initial_coords = np.random.uniform(low=X_BOUNDARY[0], high=X_BOUNDARY[1], size=2)
+            drone_height = DRONE_HEIGHT
+            initial_coords = Coords3d(initial_coords[0], initial_coords[1], drone_height)
+            # initial_coords = Coords3d(2, 215, 25)
+            new_station = DroneStation(coords=initial_coords, irradiation_manager=irradiation_manager,
+                                       drone_id=i + 1)  # ,
+            # carrier_frequency=UAVS_FREQS[i])
+            self.base_stations.append(new_station)
 
     def update_users_per_bs(self):
         if ((self.steps_count - 1) * TIME_STEP) % 1 == 0:
@@ -204,7 +216,7 @@ class SimulationController:
         [_user.rf_transceiver.get_serving_bs_info(recalculate=True) for _user in self.users]
         # self.update_sinr_coverage_scores()
         self.update_users_per_bs()
-        self.init_users_rf_stats()
+        # self.init_users_rf_stats()
 
     def init_users_rf_stats(self):
         [_user.rf_transceiver.init_rf_stats() for _user in self.users]
