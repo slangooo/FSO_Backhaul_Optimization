@@ -39,6 +39,14 @@ class DroneNet:
 
     def node_number(self):
         return self.drone_number + self.base_number
+    
+    def edge_number(self):
+        edge_number = 0
+        for i in range(self.node_number()):
+            for j in range(i):
+                if self.net[i][j] > 0:
+                    edge_number += 1
+        return edge_number
 
     # Square area with four single base stations at corners
     # size                    : square area dimension
@@ -180,7 +188,7 @@ class DroneNet:
                                                                                     solutionFlow, results, nextBase,
                                                                                     first, firstStop, mode)
                         if resultFound:
-                            return True
+                            return True, firstStop
             solutionNode[index] = -1
         else:
             node = self.node_number() - 1

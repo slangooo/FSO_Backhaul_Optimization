@@ -4,8 +4,8 @@ from src.main_controller import SimulationController
 from src.parameters import NUM_MBS
 from src.mhp.MHP import DroneNet
 from src.mhp.MHP import GenAlg
-from src.parameters import CALCULATE_EXACT_FSO_NET_SOLUTION, FSO_NET_GENECTIC_ALGORITHM_TIME_LIMIT, TX_POWER_FSO_DRONE, \
-    NUM_UAVS, MEAN_UES_PER_CLUSTER, MAX_FSO_DISTANCE, REQUIRED_UE_RATE
+from src.parameters import CALCULATE_EXACT_FSO_NET_SOLUTION, CALCULATE_EXACT_FSO_NET_SOLUTION_FIRST_ONLY, FSO_NET_GENECTIC_ALGORITHM_TIME_LIMIT, \
+    TX_POWER_FSO_DRONE, NUM_UAVS, MEAN_UES_PER_CLUSTER, MAX_FSO_DISTANCE, REQUIRED_UE_RATE, SAVE_MHP_DATA
 import numpy as np
 import random
 from multiprocessing import Pool
@@ -13,15 +13,35 @@ import os
 from time import time
 from itertools import repeat
 import pickle
+import string
+from datetime import datetime
 
-n_drones_total = [8, 9, 10, 11, 12, 13, 14]
-ue_rate = [5e6, 7e6, 9e6]  # , 11e6]
-max_fso_distance = [3000, 4000, 5000]
+
+
+
+
+#n_drones_total = [8, 9, 10, 11, 12, 13, 14]
+n_drones_total = range(8, 17)
+#ue_rate = [5e6, 7e6, 9e6]  # , 11e6]
+ue_rate = [5e6]
+#max_fso_distance = [3000, 4000, 5000]
+max_fso_distance = range(3000, 4001, 20)
 fso_transmit_power = [0.2]
 results_folder = os.path.join(os.getcwd(), "results\\")
 NUM_ITER = 10000
 
-
+def log(msg):
+    global datetime_now
+    logFile = open('info.log', 'a')
+    logFile.write(datetime.now().strftime('%Y-%m-%d_%H-%M-%S ') + msg + '\n')
+    logFile.close()
+    
+def csv(data):
+    global datetime_now
+    csvFile = open('info.csv', 'a')
+    csvFile.write(data + '\n')
+    csvFile.close()
+    
 class Simulator(SimulationController):
     def __init__(self):
         super().__init__()
@@ -44,27 +64,39 @@ class Simulator(SimulationController):
         dn = DroneNet.createArea(mbs_list, dbs_list, self.get_required_capacity_per_dbs(),
                                  self.fso_links_capacs)
 
-        exactSolution = dn.lookForChainSolution(first=False, mode='bestNodes')
+        exactSolution = dn.lookForChainSolution(first=CALCULATE_EXACT_FSO_NET_SOLUTION_FIRST_ONLY, mode='bestNodes')
+        
         if exactSolution.found:
             ga = GenAlg(timeLimit=FSO_NET_GENECTIC_ALGORITHM_TIME_LIMIT)
             gaSolution = ga.run(dn)
             n_solutions = len(exactSolution.results)
             score_exact = random.choice(exactSolution.bestResults)[1]
             time_first = exactSolution.firstTime
-            time_full = exactSolution.fullTime
             score_ga = gaSolution.score
             time_ga = float(gaSolution.time)
+            time_full = exactSolution.fullTime
             ga_percentage = 100 * gaSolution.score / exactSolution.bestScore
-
+            
+            if SAVE_MHP_DATA:
+                msg = '  . n_drones=' + str(n_drones) + ' ue_rate=' + str(ue_rate) + ' max_dist=' + str(max_fso_distance) + ' power=' + str(fso_transmit_power) + ' em_n_iters=' + str(em_n_iters) + ' mbs=' + str(len(mbs_list)) + ' dbs=' + str(len(dbs_list)) + ' links=' + str(dn.edge_number()) + ' exFullTime=' + str(exactSolution.fullTime) + ' exFirstTime=' + str(exactSolution.firstTime) + ' gaTime=' + str(gaSolution.time) + ' all_sol=' + str(n_solutions) + ' ga_percentage = ' + str(int(ga_percentage))
+                print(msg)
+                log(msg)
+                csv('true;'+str(n_drones)+';'+str(ue_rate)+';'+str(max_fso_distance)+';'+str(fso_transmit_power)+';'+str(em_n_iters)+';'+str(len(mbs_list))+';'+str(len(dbs_list))+';'+str(dn.edge_number())+';'+str(exactSolution.fullTime)+';'+str(exactSolution.firstTime)+';'+str(gaSolution.time)+';'+str(n_solutions)+';'+str(int(ga_percentage)))
         else:
             n_solutions = 0
             score_ga = 0
             score_exact = 0
             time_ga = 0
             time_first = 0
-            time_full = 0
+            time_full = exactSolution.fullTime
             ga_percentage = 0
-
+            
+            if SAVE_MHP_DATA:
+                msg = '  X n_drones=' + str(n_drones) + ' ue_rate=' + str(ue_rate) + ' max_dist=' + str(max_fso_distance) + ' power=' + str(fso_transmit_power) + ' em_n_iters=' + str(em_n_iters) + ' mbs=' + str(len(mbs_list)) + ' dbs=' + str(len(dbs_list)) + ' links=' + str(dn.edge_number()) + ' exFullTime=' + str(exactSolution.fullTime)
+                print(msg)
+                log(msg)
+                csv('false;'+str(n_drones)+';'+str(ue_rate)+';'+str(max_fso_distance)+';'+str(fso_transmit_power)+';'+str(em_n_iters)+';'+str(len(mbs_list))+';'+str(len(dbs_list))+';'+str(dn.edge_number())+';'+str(exactSolution.fullTime))
+        
         return n_solutions, score_ga, score_exact, time_ga, time_first, ga_percentage, time_full, em_n_iters
         # results
 
@@ -102,7 +134,11 @@ if __name__ == '__main__':
     #                            fso_transmit_power[0], 20)
     # res1 = pool.starmap(sim.perform_simulation_run, zip(repeat(n_drones_total[0]), repeat(ue_rate[0]), max_fso_distance,
     #                                                     repeat(fso_transmit_power[0]), repeat(20)))
-
+    
+    
+    log('================== ' + str(datetime.now()) + ' ==================')
+    csv('Find;n_drones;ue_rate;max_dist;power;em_n_iters;mbs;dbs;links;exFullTime;exFirstTime;gaTime;all_sol;ga_percentage')
+    
     run_idx = 5
     run_params = [n_drones_total, ue_rate, max_fso_distance, fso_transmit_power]
     with open(results_folder + f"params_run{run_idx}.pkl", 'wb') as f:
