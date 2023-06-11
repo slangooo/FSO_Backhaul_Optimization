@@ -52,7 +52,7 @@ class Simulator(SimulationController):
         if current_n_drones < n_drones:
             self.add_drone_stations(n_drones - current_n_drones)
 
-    def perform_simulation_run(self, n_drones=NUM_UAVS, ue_rate=REQUIRED_UE_RATE,
+    def perform_simulation_run(self, test_iteration=1, n_drones=NUM_UAVS, ue_rate=REQUIRED_UE_RATE,
                                max_fso_distance=MAX_FSO_DISTANCE, fso_transmit_power=TX_POWER_FSO_DRONE, em_n_iters=0):
         # self.set_drones_number(n_drones)
         # self.reset_users_model()
@@ -78,10 +78,10 @@ class Simulator(SimulationController):
             ga_percentage = 100 * gaSolution.score / exactSolution.bestScore
             
             if SAVE_MHP_DATA:
-                msg = '  . n_drones=' + str(n_drones) + ' ue_rate=' + str(ue_rate) + ' max_dist=' + str(max_fso_distance) + ' power=' + str(fso_transmit_power) + ' em_n_iters=' + str(em_n_iters) + ' mbs=' + str(len(mbs_list)) + ' dbs=' + str(len(dbs_list)) + ' links=' + str(dn.edge_number()) + ' exFullTime=' + str(exactSolution.fullTime) + ' exFirstTime=' + str(exactSolution.firstTime) + ' gaTime=' + str(gaSolution.time) + ' all_sol=' + str(n_solutions) + ' ga_percentage = ' + str(int(ga_percentage))
+                msg = '  . iteration=' + str(test_iteration) + ' n_drones=' + str(n_drones) + ' ue_rate=' + str(ue_rate) + ' max_dist=' + str(max_fso_distance) + ' power=' + str(fso_transmit_power) + ' em_n_iters=' + str(em_n_iters) + ' mbs=' + str(len(mbs_list)) + ' dbs=' + str(len(dbs_list)) + ' links=' + str(dn.edge_number()) + ' exFullTime=' + str(exactSolution.fullTime) + ' exFirstTime=' + str(exactSolution.firstTime) + ' gaTime=' + str(gaSolution.time) + ' all_sol=' + str(n_solutions) + ' ga_percentage = ' + str(int(ga_percentage))
                 print(msg)
                 log(msg)
-                csv('true;'+str(n_drones)+';'+str(ue_rate)+';'+str(max_fso_distance)+';'+str(fso_transmit_power)+';'+str(em_n_iters)+';'+str(len(mbs_list))+';'+str(len(dbs_list))+';'+str(dn.edge_number())+';'+str(exactSolution.fullTime)+';'+str(exactSolution.firstTime)+';'+str(gaSolution.time)+';'+str(n_solutions)+';'+str(int(ga_percentage)))
+                csv('true;'+str(test_iteration)+';'+str(n_drones)+';'+str(ue_rate)+';'+str(max_fso_distance)+';'+str(fso_transmit_power)+';'+str(em_n_iters)+';'+str(len(mbs_list))+';'+str(len(dbs_list))+';'+str(dn.edge_number())+';'+str(exactSolution.fullTime)+';'+str(exactSolution.firstTime)+';'+str(gaSolution.time)+';'+str(n_solutions)+';'+str(int(ga_percentage)))
         else:
             n_solutions = 0
             score_ga = 0
@@ -92,16 +92,16 @@ class Simulator(SimulationController):
             ga_percentage = 0
             
             if SAVE_MHP_DATA:
-                msg = '  X n_drones=' + str(n_drones) + ' ue_rate=' + str(ue_rate) + ' max_dist=' + str(max_fso_distance) + ' power=' + str(fso_transmit_power) + ' em_n_iters=' + str(em_n_iters) + ' mbs=' + str(len(mbs_list)) + ' dbs=' + str(len(dbs_list)) + ' links=' + str(dn.edge_number()) + ' exFullTime=' + str(exactSolution.fullTime)
+                msg = '  X iteration=' + str(test_iteration) + ' n_drones=' + str(n_drones) + ' ue_rate=' + str(ue_rate) + ' max_dist=' + str(max_fso_distance) + ' power=' + str(fso_transmit_power) + ' em_n_iters=' + str(em_n_iters) + ' mbs=' + str(len(mbs_list)) + ' dbs=' + str(len(dbs_list)) + ' links=' + str(dn.edge_number()) + ' exFullTime=' + str(exactSolution.fullTime)
                 print(msg)
                 log(msg)
-                csv('false;'+str(n_drones)+';'+str(ue_rate)+';'+str(max_fso_distance)+';'+str(fso_transmit_power)+';'+str(em_n_iters)+';'+str(len(mbs_list))+';'+str(len(dbs_list))+';'+str(dn.edge_number())+';'+str(exactSolution.fullTime))
+                csv('false;'+str(test_iteration)+';'+str(n_drones)+';'+str(ue_rate)+';'+str(max_fso_distance)+';'+str(fso_transmit_power)+';'+str(em_n_iters)+';'+str(len(mbs_list))+';'+str(len(dbs_list))+';'+str(dn.edge_number())+';'+str(exactSolution.fullTime))
         
         return n_solutions, score_ga, score_exact, time_ga, time_first, ga_percentage, time_full, em_n_iters
         # results
 
 
-def perform_simulation_run_main(n_drones, ue_rate=ue_rate, max_fso_distance=max_fso_distance,
+def perform_simulation_run_main(test_iteration, n_drones, ue_rate=ue_rate, max_fso_distance=max_fso_distance,
                                 fso_transmit_power=fso_transmit_power):
     sim = Simulator()
     pool = Pool(5)
@@ -116,7 +116,10 @@ def perform_simulation_run_main(n_drones, ue_rate=ue_rate, max_fso_distance=max_
         #     res[:, idx_1, idx_3, idx_2] = sim.perform_simulation_run(n_drones, _ue_rate, _max_fso_distance,
         #                                                              _fso_transmit_power, em_n_iters)
             res[:, :, idx_3, idx_2] = np.array(pool.starmap(sim.perform_simulation_run,
-                                                            zip(repeat(n_drones), ue_rate, repeat(_max_fso_distance),
+                                                            zip(repeat(test_iteration),
+                                                                repeat(n_drones),
+                                                                ue_rate,
+                                                                repeat(_max_fso_distance),
                                                                 repeat(_fso_transmit_power),
                                                                 repeat(em_n_iters)))).transpose()
     pool.close()
@@ -137,25 +140,25 @@ if __name__ == '__main__':
     
     
     log('================== ' + str(datetime.now()) + ' ==================')
-    csv('Find;n_drones;ue_rate;max_dist;power;em_n_iters;mbs;dbs;links;exFullTime;exFirstTime;gaTime;all_sol;ga_percentage')
+    csv('Find;test_iteration;n_drones;ue_rate;max_dist;power;em_n_iters;mbs;dbs;links;exFullTime;exFirstTime;gaTime;all_sol;ga_percentage')
     
     run_idx = 5
     run_params = [n_drones_total, ue_rate, max_fso_distance, fso_transmit_power]
     with open(results_folder + f"params_run{run_idx}.pkl", 'wb') as f:
         pickle.dump(run_params, f)
     res_iter = np.zeros((8, len(n_drones_total), len(ue_rate), len(max_fso_distance), len(fso_transmit_power)))
-    for iter in range(1, NUM_ITER+1):
-        print(f"iteration {iter}")
+    for test_iteration in range(1, NUM_ITER+1):
+        print(f"iteration {test_iteration}")
         for n_drone_idx, _n_drones in enumerate(n_drones_total):
             print("N Drones =", _n_drones)
-            res_iter[:, n_drone_idx, :, :, :] = perform_simulation_run_main(n_drones=_n_drones)
+            res_iter[:, n_drone_idx, :, :, :] = perform_simulation_run_main(test_iteration=test_iteration,n_drones=_n_drones)
         if np.isnan(res_iter).any():
             print("FOUND NAN!")
             break
-        if iter == 1:
+        if test_iteration == 1:
             res = res_iter.copy()
         else:
-            res = res + (res_iter - res) / iter
+            res = res + (res_iter - res) / test_iteration
         np.save(results_folder + f'results_of_run{run_idx}', res)
     np.save(results_folder + f'results_of_run{run_idx}', res)
 
