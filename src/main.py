@@ -81,8 +81,8 @@ def perform_simulation_run_main(n_drones, ue_rate=ue_rate, max_fso_distance=max_
     # sim.ue_required_rate = _ue_rate
     for idx_2, _fso_transmit_power in enumerate(fso_transmit_power):
         for idx_3, _max_fso_distance in enumerate(max_fso_distance):
-        #     res[:, idx_1, idx_3, idx_2] = sim.perform_simulation_run(n_drones, _ue_rate, _max_fso_distance,
-        #                                                              _fso_transmit_power, em_n_iters)
+            #     res[:, idx_1, idx_3, idx_2] = sim.perform_simulation_run(n_drones, _ue_rate, _max_fso_distance,
+            #                                                              _fso_transmit_power, em_n_iters)
             res[:, :, idx_3, idx_2] = np.array(pool.starmap(sim.perform_simulation_run,
                                                             zip(repeat(n_drones), ue_rate, repeat(_max_fso_distance),
                                                                 repeat(_fso_transmit_power),
@@ -92,23 +92,29 @@ def perform_simulation_run_main(n_drones, ue_rate=ue_rate, max_fso_distance=max_
 
 
 if __name__ == '__main__':
-    # sim = Simulator()
-    # sim.set_drones_number(n_drones_total[0])
-    # sim.reset_users_model()
-    # em_n_iters = sim.perform_sinr_en()
-    # pool = Pool(5)
-    # sim.ue_required_rate = ue_rate[0]
-    # sim.perform_simulation_run(n_drones_total[0], ue_rate[0], max_fso_distance,
-    #                            fso_transmit_power[0], 20)
-    # res1 = pool.starmap(sim.perform_simulation_run, zip(repeat(n_drones_total[0]), repeat(ue_rate[0]), max_fso_distance,
-    #                                                     repeat(fso_transmit_power[0]), repeat(20)))
+    run_idx = 7
+    continue_sim = True
 
-    run_idx = 5
-    run_params = [n_drones_total, ue_rate, max_fso_distance, fso_transmit_power]
-    with open(results_folder + f"params_run{run_idx}.pkl", 'wb') as f:
-        pickle.dump(run_params, f)
+
+    def update_run_params(iter_idx=1):
+        run_params = [n_drones_total, ue_rate, max_fso_distance, fso_transmit_power, iter_idx]
+        with open(results_folder + f"params_run{run_idx}.pkl", 'wb') as f:
+            pickle.dump(run_params, f)
+
+
+    # update_run_params()
+
+    if continue_sim:
+        res = np.load(results_folder + f'results_of_run{run_idx}.npy')
+        with open(results_folder + f"params_run{run_idx}.pkl", 'rb') as f:
+            run_params = pickle.load(f)
+        start_iter = run_params[-1] + 1
+        assert (start_iter > 1)
+    else:
+        start_iter = 1
+
     res_iter = np.zeros((8, len(n_drones_total), len(ue_rate), len(max_fso_distance), len(fso_transmit_power)))
-    for iter in range(1, NUM_ITER+1):
+    for iter in range(start_iter, NUM_ITER + 1):
         print(f"iteration {iter}")
         for n_drone_idx, _n_drones in enumerate(n_drones_total):
             print("N Drones =", _n_drones)
@@ -121,6 +127,7 @@ if __name__ == '__main__':
         else:
             res = res + (res_iter - res) / iter
         np.save(results_folder + f'results_of_run{run_idx}', res)
+        update_run_params(iter + 1)
     np.save(results_folder + f'results_of_run{run_idx}', res)
 
     # res = perform_simulation_run_main(7, ue_rate, max_fso_distance, fso_transmit_power)
