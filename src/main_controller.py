@@ -72,7 +72,9 @@ class SimulationController:
         return poss_links_capacs
 
     def perform_sinr_en(self):
-        return perform_sinr_em(self.users, self.base_stations[NUM_MBS:])
+        iter = perform_sinr_em(self.users, self.base_stations[NUM_MBS:])
+        self.update_users_rfs()
+        return iter
 
     def get_required_capacity_per_dbs(self):
         return np.array([_bs.n_associated_users * self.ue_required_rate for _bs in self.bs_rf_list])
@@ -183,21 +185,21 @@ class SimulationController:
             initial_coords = Coords3d(initial_coords[0], initial_coords[1], drone_height)
             # initial_coords = Coords3d(2, 215, 25)
             new_station = DroneStation(coords=initial_coords, irradiation_manager=irradiation_manager,
-                                       drone_id=i + 1)  # ,
+                                       drone_id=self.base_stations[-1].id +  1)  # ,
             # carrier_frequency=UAVS_FREQS[i])
             self.base_stations.append(new_station)
 
+
     def update_users_per_bs(self):
-        if ((self.steps_count - 1) * TIME_STEP) % 1 == 0:
-            bs_list = [[] for i in range(len(self.bs_rf_list))]
-            if not bs_list:
-                return
-            for _user in self.users:
-                bs_id, sinr, snr, rx_power = _user.rf_transceiver.get_serving_bs_info(recalculate=False)
-                bs_list[bs_id - NUM_MBS].append(_user)
-            for _bs, _users in zip(self.bs_rf_list, bs_list):
-                _bs.n_associated_users = len(_users)
-            self.users_per_bs = bs_list
+        bs_list = [[] for i in range(len(self.bs_rf_list))]
+        if not bs_list:
+            return
+        for _user in self.users:
+            bs_id, sinr, snr, rx_power = _user.rf_transceiver.get_serving_bs_info(recalculate=False)
+            bs_list[bs_id - NUM_MBS].append(_user)
+        for _bs, _users in zip(self.bs_rf_list, bs_list):
+            _bs.n_associated_users = len(_users)
+        self.users_per_bs = bs_list
 
     def get_users_per_bs(self):
         return self.users_per_bs
@@ -244,7 +246,7 @@ class SimulationController:
                 ax.text(abs(dbs_i.coords.x + dbs_j.coords.x) / 2, abs(dbs_i.coords.y + dbs_j.coords.y) / 2,
                         f'{self.fso_links_capacs[idx_i, idx_j]}', fontsize=8)
 
-        fig.show()
+        return fig
 
     def generate_plot(self, plot_ues=True):
         mpl.rc('font', family='Times New Roman')

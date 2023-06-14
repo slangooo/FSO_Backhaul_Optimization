@@ -168,7 +168,8 @@ class Coords3d:
     def update_coords_from_array(self, np_array):
         self.x = np_array[0]
         self.y = np_array[1]
-        self.z = np_array[2]
+        if len(np_array)>2:
+            self.z = np_array[2]
 
 
 def to_coords_3d(_array):

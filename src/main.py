@@ -51,6 +51,9 @@ class Simulator(SimulationController):
         self.base_stations = self.base_stations[:n_drones + NUM_MBS]
         if current_n_drones < n_drones:
             self.add_drone_stations(n_drones - current_n_drones)
+        self.set_ues_base_stations()
+        self.update_users_rfs()
+
 
     def perform_simulation_run(self, test_iteration=1, n_drones=NUM_UAVS, ue_rate=REQUIRED_UE_RATE,
                                max_fso_distance=MAX_FSO_DISTANCE, fso_transmit_power=TX_POWER_FSO_DRONE, em_n_iters=0):
