@@ -4,8 +4,8 @@ from src.main_controller import SimulationController
 from src.parameters import NUM_MBS
 from src.mhp.MHP import DroneNet
 from src.mhp.MHP import GenAlg
-from src.parameters import CALCULATE_EXACT_FSO_NET_SOLUTION, FSO_NET_GENECTIC_ALGORITHM_TIME_LIMIT, TX_POWER_FSO_DRONE, \
-    NUM_UAVS, MEAN_UES_PER_CLUSTER, MAX_FSO_DISTANCE, REQUIRED_UE_RATE
+from src.parameters import CALCULATE_EXACT_FSO_NET_SOLUTION, CALCULATE_EXACT_FSO_NET_SOLUTION_FIRST_ONLY, FSO_NET_GENECTIC_ALGORITHM_TIME_LIMIT, \
+    TX_POWER_FSO_DRONE, NUM_UAVS, MEAN_UES_PER_CLUSTER, MAX_FSO_DISTANCE, REQUIRED_UE_RATE, SAVE_MHP_DATA
 import numpy as np
 import random
 from multiprocessing import Pool
@@ -13,15 +13,35 @@ import os
 from time import time
 from itertools import repeat
 import pickle
+import string
+from datetime import datetime
 
-n_drones_total = [8, 9, 10, 11, 12, 13, 14]
-ue_rate = [5e6, 7e6, 9e6]  # , 11e6]
-max_fso_distance = [3000, 4000, 5000]
+
+
+
+
+#n_drones_total = [8, 9, 10, 11, 12, 13, 14]
+n_drones_total = range(8, 17)
+#ue_rate = [5e6, 7e6, 9e6]  # , 11e6]
+ue_rate = [5e6]
+#max_fso_distance = [3000, 4000, 5000]
+max_fso_distance = range(3000, 4001, 20)
 fso_transmit_power = [0.2]
 results_folder = os.path.join(os.getcwd(), "results\\")
 NUM_ITER = 10000
 
-
+def log(msg):
+    global datetime_now
+    logFile = open('info.log', 'a')
+    logFile.write(datetime.now().strftime('%Y-%m-%d_%H-%M-%S ') + msg + '\n')
+    logFile.close()
+    
+def csv(data):
+    global datetime_now
+    csvFile = open('info.csv', 'a')
+    csvFile.write(data + '\n')
+    csvFile.close()
+    
 class Simulator(SimulationController):
     def __init__(self):
         super().__init__()
@@ -32,7 +52,7 @@ class Simulator(SimulationController):
         if current_n_drones < n_drones:
             self.add_drone_stations(n_drones - current_n_drones)
 
-    def perform_simulation_run(self, n_drones=NUM_UAVS, ue_rate=REQUIRED_UE_RATE,
+    def perform_simulation_run(self, test_iteration=1, n_drones=NUM_UAVS, ue_rate=REQUIRED_UE_RATE,
                                max_fso_distance=MAX_FSO_DISTANCE, fso_transmit_power=TX_POWER_FSO_DRONE, em_n_iters=0):
         # self.set_drones_number(n_drones)
         # self.reset_users_model()
@@ -44,32 +64,44 @@ class Simulator(SimulationController):
         dn = DroneNet.createArea(mbs_list, dbs_list, self.get_required_capacity_per_dbs(),
                                  self.fso_links_capacs)
 
-        exactSolution = dn.lookForChainSolution(first=False, mode='bestNodes')
+        exactSolution = dn.lookForChainSolution(first=CALCULATE_EXACT_FSO_NET_SOLUTION_FIRST_ONLY, mode='bestNodes')
+        
         if exactSolution.found:
             ga = GenAlg(timeLimit=FSO_NET_GENECTIC_ALGORITHM_TIME_LIMIT)
             gaSolution = ga.run(dn)
             n_solutions = len(exactSolution.results)
             score_exact = random.choice(exactSolution.bestResults)[1]
             time_first = exactSolution.firstTime
-            time_full = exactSolution.fullTime
             score_ga = gaSolution.score
             time_ga = float(gaSolution.time)
+            time_full = exactSolution.fullTime
             ga_percentage = 100 * gaSolution.score / exactSolution.bestScore
-
+            
+            if SAVE_MHP_DATA:
+                msg = '  . iteration=' + str(test_iteration) + ' n_drones=' + str(n_drones) + ' ue_rate=' + str(ue_rate) + ' max_dist=' + str(max_fso_distance) + ' power=' + str(fso_transmit_power) + ' em_n_iters=' + str(em_n_iters) + ' mbs=' + str(len(mbs_list)) + ' dbs=' + str(len(dbs_list)) + ' links=' + str(dn.edge_number()) + ' exFullTime=' + str(exactSolution.fullTime) + ' exFirstTime=' + str(exactSolution.firstTime) + ' gaTime=' + str(gaSolution.time) + ' all_sol=' + str(n_solutions) + ' ga_percentage = ' + str(int(ga_percentage))
+                print(msg)
+                log(msg)
+                csv('true;'+str(test_iteration)+';'+str(n_drones)+';'+str(ue_rate)+';'+str(max_fso_distance)+';'+str(fso_transmit_power)+';'+str(em_n_iters)+';'+str(len(mbs_list))+';'+str(len(dbs_list))+';'+str(dn.edge_number())+';'+str(exactSolution.fullTime)+';'+str(exactSolution.firstTime)+';'+str(gaSolution.time)+';'+str(n_solutions)+';'+str(int(ga_percentage)))
         else:
             n_solutions = 0
             score_ga = 0
             score_exact = 0
             time_ga = 0
             time_first = 0
-            time_full = 0
+            time_full = exactSolution.fullTime
             ga_percentage = 0
-
+            
+            if SAVE_MHP_DATA:
+                msg = '  X iteration=' + str(test_iteration) + ' n_drones=' + str(n_drones) + ' ue_rate=' + str(ue_rate) + ' max_dist=' + str(max_fso_distance) + ' power=' + str(fso_transmit_power) + ' em_n_iters=' + str(em_n_iters) + ' mbs=' + str(len(mbs_list)) + ' dbs=' + str(len(dbs_list)) + ' links=' + str(dn.edge_number()) + ' exFullTime=' + str(exactSolution.fullTime)
+                print(msg)
+                log(msg)
+                csv('false;'+str(test_iteration)+';'+str(n_drones)+';'+str(ue_rate)+';'+str(max_fso_distance)+';'+str(fso_transmit_power)+';'+str(em_n_iters)+';'+str(len(mbs_list))+';'+str(len(dbs_list))+';'+str(dn.edge_number())+';'+str(exactSolution.fullTime))
+        
         return n_solutions, score_ga, score_exact, time_ga, time_first, ga_percentage, time_full, em_n_iters
         # results
 
 
-def perform_simulation_run_main(n_drones, ue_rate=ue_rate, max_fso_distance=max_fso_distance,
+def perform_simulation_run_main(test_iteration, n_drones, ue_rate=ue_rate, max_fso_distance=max_fso_distance,
                                 fso_transmit_power=fso_transmit_power):
     sim = Simulator()
     pool = Pool(5)
@@ -84,7 +116,10 @@ def perform_simulation_run_main(n_drones, ue_rate=ue_rate, max_fso_distance=max_
             #     res[:, idx_1, idx_3, idx_2] = sim.perform_simulation_run(n_drones, _ue_rate, _max_fso_distance,
             #                                                              _fso_transmit_power, em_n_iters)
             res[:, :, idx_3, idx_2] = np.array(pool.starmap(sim.perform_simulation_run,
-                                                            zip(repeat(n_drones), ue_rate, repeat(_max_fso_distance),
+                                                            zip(repeat(test_iteration),
+                                                                repeat(n_drones),
+                                                                ue_rate,
+                                                                repeat(_max_fso_distance),
                                                                 repeat(_fso_transmit_power),
                                                                 repeat(em_n_iters)))).transpose()
     pool.close()
@@ -95,14 +130,10 @@ if __name__ == '__main__':
     run_idx = 7
     continue_sim = True
 
-
     def update_run_params(iter_idx=1):
         run_params = [n_drones_total, ue_rate, max_fso_distance, fso_transmit_power, iter_idx]
         with open(results_folder + f"params_run{run_idx}.pkl", 'wb') as f:
             pickle.dump(run_params, f)
-
-
-    # update_run_params()
 
     if continue_sim:
         res = np.load(results_folder + f'results_of_run{run_idx}.npy')
@@ -112,20 +143,21 @@ if __name__ == '__main__':
         assert (start_iter > 1)
     else:
         start_iter = 1
-
+        
     res_iter = np.zeros((8, len(n_drones_total), len(ue_rate), len(max_fso_distance), len(fso_transmit_power)))
-    for iter in range(start_iter, NUM_ITER + 1):
-        print(f"iteration {iter}")
+    for test_iteration in range(start_iter, NUM_ITER + 1):
+        print(f"iteration {test_iteration}")
         for n_drone_idx, _n_drones in enumerate(n_drones_total):
             print("N Drones =", _n_drones)
-            res_iter[:, n_drone_idx, :, :, :] = perform_simulation_run_main(n_drones=_n_drones)
+            res_iter[:, n_drone_idx, :, :, :] = perform_simulation_run_main(test_iteration=test_iteration,
+                                                                            n_drones=_n_drones)
         if np.isnan(res_iter).any():
             print("FOUND NAN!")
             break
-        if iter == 1:
+        if test_iteration == 1:
             res = res_iter.copy()
         else:
-            res = res + (res_iter - res) / iter
+            res = res + (res_iter - res) / test_iteration
         np.save(results_folder + f'results_of_run{run_idx}', res)
         update_run_params(iter + 1)
     np.save(results_folder + f'results_of_run{run_idx}', res)

@@ -56,7 +56,7 @@ ABSORPTION_COEFFICIENT_CLOUD = 0.01
 STARTING_DAY = 1
 STARTING_MONTH = 7
 STARTING_HOUR = 12  # 24 format
-STARTING_MINUTE = 00
+STARTING_MINUTE = 0
 MAX_HOUR_DAY = 23
 CLOUD_SPEED = 16 * 1
 TIME_ZONE = 'Europe/Madrid'
@@ -141,5 +141,9 @@ USER_MOBILITY_SAVE_NAME = 'extended_4_madrids_500_users'
 
 # Calculate solution for drone FSO connection in exact way, exponential time, only for small number of drones
 CALCULATE_EXACT_FSO_NET_SOLUTION = True
+# Limit calculation of exact solution to the first one, still exponential time
+CALCULATE_EXACT_FSO_NET_SOLUTION_FIRST_ONLY = True
 # Time limit in seconds for genetic algorithm searching solution for FSO net
 FSO_NET_GENECTIC_ALGORITHM_TIME_LIMIT = 10
+# For true store extra information about MHP runs
+SAVE_MHP_DATA = True
