@@ -102,18 +102,18 @@ class RfTransceiver:
         self.received_power = self.received_powers[max_idx][max_sinrs_idx]
         return self.serving_bs.bs_id, self.received_sinr, self.received_snr, self.received_power
 
-    def update_sinr_coverage_score(self, steps_count):
-        # self.sinr_coverage_score -= self.sinr_coverage_history[0]
-        # self.sinr_coverage_history = shift(self.sinr_coverage_history, -1, cval=self.is_sinr_satisfied())
-        # self.sinr_coverage_score += self.sinr_coverage_history[-1]
-        res = self.is_sinr_satisfied()
-        idx = steps_count%USER_SINR_COVERAGE_HIST
-        self.sinr_coverage_score -= self.sinr_coverage_history[idx]
-        self.sinr_coverage_history[idx] = res
-        self.sinr_coverage_score += res
-
-
-        # self.sinr_coverage_score -= self.sinr_coverage_history[0]
+    # def update_sinr_coverage_score(self, steps_count):
+    #     # self.sinr_coverage_score -= self.sinr_coverage_history[0]
+    #     # self.sinr_coverage_history = shift(self.sinr_coverage_history, -1, cval=self.is_sinr_satisfied())
+    #     # self.sinr_coverage_score += self.sinr_coverage_history[-1]
+    #     res = self.is_sinr_satisfied()
+    #     idx = steps_count%USER_SINR_COVERAGE_HIST
+    #     self.sinr_coverage_score -= self.sinr_coverage_history[idx]
+    #     self.sinr_coverage_history[idx] = res
+    #     self.sinr_coverage_score += res
+    #
+    #
+    #     # self.sinr_coverage_score -= self.sinr_coverage_history[0]
 
     def update_rf_stats(self, steps_count):
         bandwidth_share = self.serving_bs.available_bandwidth / self.serving_bs.n_associated_users

@@ -23,7 +23,7 @@ MEAN_UES_PER_CLUSTER = 5 #Mean number of UEs in cluster
 MBS_HEIGHT = 25  # m
 MBS_LOCATIONS = [Coords3d(X_BOUNDARY[0], Y_BOUNDARY[0], MBS_HEIGHT), Coords3d(X_BOUNDARY[1], Y_BOUNDARY[1], MBS_HEIGHT)]
 
-NUM_UAVS = 10 #Number of DBSs. We can increase it if FSO capacities are insufficient, etc.
+NUM_UAVS = 150 #Number of DBSs. We can increase it if FSO capacities are insufficient, etc.
 
 REQUIRED_UE_RATE = 6e6 #Required Mbps per UE. It can be increased to make the problem harder,
                         # or decrease to relax constraint
@@ -31,6 +31,9 @@ REQUIRED_UE_RATE = 6e6 #Required Mbps per UE. It can be increased to make the pr
 MAX_FSO_DISTANCE = 4000 #FSO links between nodes that have distance higher than this are assumed to have capacity 0
 
 TX_POWER_FSO_DRONE = 0.2  # W
+
+CLUSTERING_METHOD = 0 #0 for SINR-EM, and 1 for Kmeans
+
 ###########################################
 
 
@@ -142,8 +145,8 @@ USER_MOBILITY_SAVE_NAME = 'extended_4_madrids_500_users'
 # Calculate solution for drone FSO connection in exact way, exponential time, only for small number of drones
 CALCULATE_EXACT_FSO_NET_SOLUTION = True
 # Limit calculation of exact solution to the first one, still exponential time
-CALCULATE_EXACT_FSO_NET_SOLUTION_FIRST_ONLY = True
+CALCULATE_EXACT_FSO_NET_SOLUTION_FIRST_ONLY = False
 # Time limit in seconds for genetic algorithm searching solution for FSO net
 FSO_NET_GENECTIC_ALGORITHM_TIME_LIMIT = 10
 # For true store extra information about MHP runs
-SAVE_MHP_DATA = True
+SAVE_MHP_DATA = False

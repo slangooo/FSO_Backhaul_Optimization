@@ -5,7 +5,7 @@ from src.parameters import NUM_MBS
 from src.mhp.MHP import DroneNet
 from src.mhp.MHP import GenAlg
 from src.parameters import CALCULATE_EXACT_FSO_NET_SOLUTION, CALCULATE_EXACT_FSO_NET_SOLUTION_FIRST_ONLY, FSO_NET_GENECTIC_ALGORITHM_TIME_LIMIT, \
-    TX_POWER_FSO_DRONE, NUM_UAVS, MEAN_UES_PER_CLUSTER, MAX_FSO_DISTANCE, REQUIRED_UE_RATE, SAVE_MHP_DATA
+    TX_POWER_FSO_DRONE, NUM_UAVS, MEAN_UES_PER_CLUSTER, MAX_FSO_DISTANCE, REQUIRED_UE_RATE, SAVE_MHP_DATA, CLUSTERING_METHOD
 import numpy as np
 import random
 from multiprocessing import Pool
@@ -21,11 +21,11 @@ from datetime import datetime
 
 
 #n_drones_total = [8, 9, 10, 11, 12, 13, 14]
-n_drones_total = range(8, 17)
+n_drones_total = range(8, 15)
 #ue_rate = [5e6, 7e6, 9e6]  # , 11e6]
 ue_rate = [5e6]
-#max_fso_distance = [3000, 4000, 5000]
-max_fso_distance = range(3000, 4001, 20)
+max_fso_distance = [3000, 4000, 5000]
+# max_fso_distance = range(3000, 4001, 20)
 fso_transmit_power = [0.2]
 results_folder = os.path.join(os.getcwd(), "results\\")
 NUM_ITER = 10000
@@ -59,7 +59,7 @@ class Simulator(SimulationController):
                                max_fso_distance=MAX_FSO_DISTANCE, fso_transmit_power=TX_POWER_FSO_DRONE, em_n_iters=0):
         # self.set_drones_number(n_drones)
         # self.reset_users_model()
-        # em_n_iters = self.perform_sinr_en()
+        # em_n_iters = self.localize_drones()
         self.ue_required_rate = ue_rate
         self.get_fso_capacities(max_fso_distance, fso_transmit_power)
         mbs_list = self.base_stations[:NUM_MBS]
@@ -110,7 +110,7 @@ def perform_simulation_run_main(test_iteration, n_drones, ue_rate=ue_rate, max_f
     pool = Pool(5)
     sim.set_drones_number(n_drones)
     sim.reset_users_model()
-    em_n_iters = sim.perform_sinr_en()
+    em_n_iters = sim.localize_drones(CLUSTERING_METHOD) #Here we can pass 1 to force using Kmeans
     res = np.zeros((8, len(ue_rate), len(max_fso_distance), len(fso_transmit_power)))
     # for idx_1, _ue_rate in enumerate(ue_rate):
     # sim.ue_required_rate = _ue_rate
@@ -130,8 +130,8 @@ def perform_simulation_run_main(test_iteration, n_drones, ue_rate=ue_rate, max_f
 
 
 if __name__ == '__main__':
-    run_idx = 7
-    continue_sim = True
+    run_idx = 0
+    continue_sim = False
 
     def update_run_params(iter_idx=1):
         run_params = [n_drones_total, ue_rate, max_fso_distance, fso_transmit_power, iter_idx]
@@ -162,7 +162,7 @@ if __name__ == '__main__':
         else:
             res = res + (res_iter - res) / test_iteration
         np.save(results_folder + f'results_of_run{run_idx}', res)
-        update_run_params(iter + 1)
+        update_run_params(test_iteration + 1)
     np.save(results_folder + f'results_of_run{run_idx}', res)
 
     # res = perform_simulation_run_main(7, ue_rate, max_fso_distance, fso_transmit_power)
@@ -177,8 +177,9 @@ if __name__ == '__main__':
     # fig, _ = sim_ctrl.generate_plot()
     # fig.show()
     #
-    # #Locate DBSs according to EM algorithm which optimizes channel quality
-    # sim_ctrl.perform_sinr_en()
+    # #Locate DBSs according to EM algorithm which optimizes channel quality.
+    # Select which clustering method {0: SINR-EM, 1- Kmeans}
+    # sim_ctrl.localize_drones(0)
     #
     # #If we plot again we can see new DBSs locations
     # fig, _ = sim_ctrl.generate_plot()

@@ -1,15 +1,14 @@
 #  Copyright (c) 2023. Salim Janji.
 #   All rights reserved.
 
-from src.environment.user_mobility import ObstaclesMobilityModel
 from src.em_sinr import perform_sinr_em
 from src.users import User
 from src.drone_station import DroneStation
 from src.macro_base_station import MacroBaseStation
 import numpy as np
 from src.parameters import TX_POWER_FSO_MBS, TX_POWER_FSO_DRONE, NUM_UAVS, NUM_MBS, NUM_OF_USERS, \
-    USER_MOBILITY_SAVE_NAME, TIME_STEP,  DRONE_HEIGHT, SKIP_ENERGY_UPDATE, X_BOUNDARY, Y_BOUNDARY, MBS_LOCATIONS,\
-    REQUIRED_UE_RATE, MAX_FSO_DISTANCE,MEAN_UES_PER_CLUSTER
+    USER_MOBILITY_SAVE_NAME, TIME_STEP, DRONE_HEIGHT, SKIP_ENERGY_UPDATE, X_BOUNDARY, Y_BOUNDARY, MBS_LOCATIONS, \
+    REQUIRED_UE_RATE, MAX_FSO_DISTANCE, MEAN_UES_PER_CLUSTER, CLUSTERING_METHOD
 from src.environment.user_modeling import ThomasClusterProcess
 
 from src.data_structures import Coords3d
@@ -21,6 +20,7 @@ import matplotlib.pyplot as plt
 from multiprocessing import Manager
 from time import sleep
 from src.math_tools import lin2db
+from scipy.cluster import vq
 
 
 class SimulationController:
@@ -34,11 +34,11 @@ class SimulationController:
     base_stations = None
     ue_required_rate = REQUIRED_UE_RATE
 
-    def __init__(self, initial_uavs_coords=None,  n_users=NUM_OF_USERS):
-        self.reset_users_model()
+    def __init__(self, initial_uavs_coords=None, n_users=NUM_OF_USERS):
         self.base_stations = [MacroBaseStation(mbs_id=mbs_id, coords=mbs_coords)
-                              for mbs_id, mbs_coords in zip(range(len(MBS_LOCATIONS)),MBS_LOCATIONS)]
+                              for mbs_id, mbs_coords in zip(range(len(MBS_LOCATIONS)), MBS_LOCATIONS)]
         self.create_drone_stations()
+        self.reset_users_model()
         self.irradiation_manager = None
         self.init_users_rfs()
         self.stations_list = []
@@ -49,7 +49,6 @@ class SimulationController:
                       for i in range(self.users_model.n_users)]
         if self.base_stations:
             self.init_users_rfs()
-
 
     def get_fso_capacities(self, max_fso_distance=MAX_FSO_DISTANCE, fso_transmit_power=TX_POWER_FSO_DRONE):
         dbs_locs = [dbs.coords for dbs in self.base_stations]
@@ -66,21 +65,37 @@ class SimulationController:
                 _, capacity = StatisticalModel.get_charge_power_and_capacity(dbs_i.coords, dbs_j.coords,
                                                                              transmit_power=fso_transmit_power,
                                                                              power_split_ratio=1)
-                capacity = int(capacity / 1e6) #In MB
+                capacity = int(capacity / 1e6)  # In MB
                 poss_links_capacs[idx_i, idx_j] = capacity if capacity > 0 else 0
         self.fso_links_capacs = poss_links_capacs
         return poss_links_capacs
 
-    def perform_sinr_en(self):
+    def perform_sinr_em(self):
         iter = perform_sinr_em(self.users, self.base_stations[NUM_MBS:])
         self.update_users_rfs()
         return iter
 
+    def perform_kmeans(self):
+        ues_locs = np.vstack([_user.coords.as_2d_array() for _user in self.users])
+        while 1:
+            try:
+                locs, _ = vq.kmeans2(ues_locs, len(self.bs_rf_list), minit='++', missing='raise')
+                break
+            except:
+                print("Empty Cluster, repeat!")
+        for idx, bs in enumerate(self.bs_rf_list):
+            bs.coords.update_coords_from_array(locs[idx])
+        self.update_users_rfs()
+        return 0
+
+    def localize_drones(self, _method=CLUSTERING_METHOD):
+        if _method == 0:
+            return self.perform_sinr_em()
+        else:
+            return self.perform_kmeans()
+
     def get_required_capacity_per_dbs(self):
         return np.array([_bs.n_associated_users * self.ue_required_rate for _bs in self.bs_rf_list])
-
-    def update_sinr_coverage_scores(self):
-        [_user.rf_transceiver.update_sinr_coverage_score(self.steps_count) for _user in self.users]
 
     def update_fso_stats(self):
         if SKIP_ENERGY_UPDATE:
@@ -162,9 +177,16 @@ class SimulationController:
         next_bs.fso_transceivers.append(ndbs_tr)
 
     def create_drone_stations(self, check_obstacles=False, irradiation_manager=None, initial_coords_input=None):
+        self.base_stations = self.base_stations[:NUM_MBS]
+        if initial_coords_input is None:
+            xs = np.linspace(X_BOUNDARY[0], X_BOUNDARY[1], int(np.ceil(np.sqrt(NUM_UAVS))) + 2)[1:-1]
+            ys = np.linspace(Y_BOUNDARY[0], Y_BOUNDARY[1], int(np.ceil(NUM_UAVS / len(xs))) + 2)[1:-1]
+            coords_xs, coords_ys = np.meshgrid(xs, ys)
+            coords_xs, coords_ys = coords_xs.flatten(), coords_ys.flatten()
         for i in range(NUM_UAVS):
             if initial_coords_input is None:
-                initial_coords = np.random.uniform(low=X_BOUNDARY[0], high=X_BOUNDARY[1], size=2)
+                # initial_coords = np.random.uniform(low=X_BOUNDARY[0], high=X_BOUNDARY[1], size=2)
+                initial_coords = np.array([coords_xs[i], coords_ys[i]])
                 drone_height = DRONE_HEIGHT
             else:
                 initial_coords = initial_coords_input[i]
@@ -177,6 +199,7 @@ class SimulationController:
             # carrier_frequency=UAVS_FREQS[i])
             self.base_stations.append(new_station)
         self.base_stations = self.base_stations
+        self.set_ues_base_stations()
 
     def add_drone_stations(self, n_drones, irradiation_manager=None):
         for i in range(n_drones):
@@ -185,10 +208,9 @@ class SimulationController:
             initial_coords = Coords3d(initial_coords[0], initial_coords[1], drone_height)
             # initial_coords = Coords3d(2, 215, 25)
             new_station = DroneStation(coords=initial_coords, irradiation_manager=irradiation_manager,
-                                       drone_id=self.base_stations[-1].id +  1)  # ,
+                                       drone_id=self.base_stations[-1].id + 1)  # ,
             # carrier_frequency=UAVS_FREQS[i])
             self.base_stations.append(new_station)
-
 
     def update_users_per_bs(self):
         bs_list = [[] for i in range(len(self.bs_rf_list))]
@@ -225,8 +247,10 @@ class SimulationController:
 
     def update_users_rfs(self):
         [_user.rf_transceiver.get_serving_bs_info(recalculate=True) for _user in self.users]
-        self.update_sinr_coverage_scores()
         self.update_users_per_bs()
+
+    def get_users_sinrs(self):
+        return np.array([_user.rf_transceiver.received_sinr for _user in self.users])
 
     def generate_plot_capacs(self):
         req_capacs = self.get_required_capacity_per_dbs()
@@ -235,7 +259,7 @@ class SimulationController:
         for idx_i, dbs_i in enumerate(self.base_stations):
             if idx_i >= NUM_MBS:
                 ax.text(dbs_i.coords.x + 10, dbs_i.coords.y,
-                        f'{req_capacs[idx_i - NUM_MBS]/1e6}', fontsize=12, color='red')
+                        f'{req_capacs[idx_i - NUM_MBS] / 1e6}', fontsize=12, color='red')
             for idx_j, dbs_j in enumerate(self.base_stations):
                 if idx_i == idx_j or self.fso_links_capacs[idx_i, idx_j] < 1:
                     continue
@@ -256,8 +280,8 @@ class SimulationController:
             fig, ax = plt.subplots()
 
         num_dbs = len(self.base_stations) - NUM_MBS
-        dbs_xs, dbs_ys = np.zeros((num_dbs, ), dtype=float), np.zeros((num_dbs, ), dtype=float)
-        mbs_xs, mbs_ys = np.zeros((NUM_MBS, ), dtype=float), np.zeros((NUM_MBS, ), dtype=float)
+        dbs_xs, dbs_ys = np.zeros((num_dbs,), dtype=float), np.zeros((num_dbs,), dtype=float)
+        mbs_xs, mbs_ys = np.zeros((NUM_MBS,), dtype=float), np.zeros((NUM_MBS,), dtype=float)
         for i in range(NUM_MBS, len(self.base_stations)):
             dbs_idx = i - NUM_MBS
             dbs_xs[dbs_idx] = self.base_stations[i].coords.x
@@ -271,14 +295,49 @@ class SimulationController:
 
 
 if __name__ == "__main__":
+    # np.random.seed(10)
     a = SimulationController()
-    fig, _ =a.generate_plot()
-    fig.show()
-    perform_sinr_em(a.users, a.base_stations[NUM_MBS:])
-    b = a.get_fso_capacities()
-    fig, _ =a.generate_plot()
-    fig.show()
-    a.generate_plot_capacs()
+    # a.reset_users_model()
+    # n_iters = a.localize_drones(1)
+    # a.update_users_rfs()
+    #
+    # sinrs_db = lin2db(a.get_users_sinrs())
+    # min_sinr, max_sinr = np.ceil(sinrs_db.min()), np.ceil(sinrs_db.max())
+    # n, bins, patches = plt.hist(x=sinrs_db, bins=40, color='#0504aa',
+    #                             alpha=0.7, rwidth=0.85)
+    # plt.grid(axis='y', alpha=0.75)
+    # plt.xlabel('SINR')
+    # plt.ylabel('Frequency')
+    # plt.title('SINRs')
+    # plt.text(23, 45, rf'$\mu={sinrs_db.mean()}$')
+    # _ = plt.xticks(np.arange(min_sinr, max_sinr, 4, dtype=int))
+    # plt.show()
+
+    # ###############KMEANS VS EM##################
+    n_iters = 100
+    kmeans_means, em_means = np.zeros(n_iters), np.zeros(n_iters)
+    for _iter in range(n_iters):
+        a.reset_users_model()
+        n_iters = a.localize_drones(0)
+        print("EM Iters: ", n_iters)
+        a.update_users_rfs()
+        sinrs_db = lin2db(a.get_users_sinrs())
+        em_means[_iter] = sinrs_db.mean()
+
+        n_iters = a.localize_drones(1)
+        a.update_users_rfs()
+        sinrs_db = lin2db(a.get_users_sinrs())
+        kmeans_means[_iter] = sinrs_db.mean()
+        print(em_means.mean(), kmeans_means.mean())
+    #######################################################
+
+    # fig, _ =a.generate_plot()
+    # fig.show()
+    # perform_sinr_em(a.users, a.base_stations[NUM_MBS:])
+    # b = a.get_fso_capacities()
+    # fig, _ =a.generate_plot()
+    # fig.show()
+    # a.generate_plot_capacs()
     # # a.set_drones_waypoints(TIME_STEP*20)
     # while 1:
     #     a.simulate_time_step()

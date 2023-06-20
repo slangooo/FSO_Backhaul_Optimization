@@ -10,7 +10,7 @@ import matplotlib as mpl
 
 results_folder = os.getcwd() + "\\"
 
-run_idx = 6
+run_idx = 8
 
 _markers = list(markers.MarkerStyle.markers.keys())
 if None in _markers: _markers.remove(None)
@@ -38,6 +38,10 @@ if __name__ == '__main__':
     fso_transmit_power_idx = 0
     max_ga_percentage, max_n_solutions = 0, 0
     n_drones_fig, n_drones_axs = plt.subplots(3, len(run_params[1]), sharex=True, sharey='row')
+    if len(run_params[1]) <2:
+        for idx, _ax in enumerate(n_drones_axs):
+            n_drones_axs[idx] = [_ax]
+
     for ue_rate_idx, ue_rate in enumerate(run_params[1]):
         for max_fso_distance_idx, max_fso_distance in enumerate(run_params[2]):
             # N solutions
@@ -76,15 +80,16 @@ if __name__ == '__main__':
     n_drones_axs[0][0].set_ylabel('N solutions', fontsize=10)
     n_drones_axs[0][0].set_yscale('log')
     # n_drones_axs[2][0].set_yscale('log')
-    n_drones_axs[0][0].set_ylim([0, max_n_solutions])
+    n_drones_axs[0][0].set_ylim([0, max_n_solutions + 1])
     n_drones_axs[2][0].set_ylim([0, 40])
     n_drones_axs[1][0].set_ylabel('GA percentage', fontsize=10)
     n_drones_axs[2][0].set_ylabel('GA time/ exact full time', fontsize=10)
     n_drones_axs[2][0].set_xlim([run_params[0][0], run_params[0][-1]])
-    n_drones_axs[2][1].set_xlim([run_params[0][0], run_params[0][-1]])
-    n_drones_axs[2][2].set_xlim([run_params[0][0], run_params[0][-1]])
+    if len(run_params[1]) >= 2:
+        n_drones_axs[2][1].set_xlim([run_params[0][0], run_params[0][-1]])
+        n_drones_axs[2][2].set_xlim([run_params[0][0], run_params[0][-1]])
 
-    n_drones_axs[1][0].set_ylim([0, 100])
+    n_drones_axs[1][0].set_ylim([0, 110])
     # n_drones_axs[2][0].set_ylim([0, max_ga_percentage])
     # n_drones_axs[2][0].set_yticks(np.arange(0, max_ga_percentage + max_ga_percentage/5, max_ga_percentage/5, dtype=int))
     n_drones_fig.align_ylabels()

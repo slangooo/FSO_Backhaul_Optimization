@@ -72,6 +72,7 @@ class ThomasClusterProcess(UserSpatialModel):
 
     def __init__(self, mean_ues_per_cluster=MEAN_UES_PER_CLUSTER):
         self.rng = np.random.default_rng()
+        # self.rng = np.random.default_rng(seed=10)
         self.generate_distribution(mean_ues_per_cluster)
 
     def populate_num_of_clusters(self):
