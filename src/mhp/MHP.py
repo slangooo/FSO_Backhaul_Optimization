@@ -5,7 +5,7 @@
 import numpy
 import random
 import math
-import time
+from time import perf_counter_ns
 import networkx
 import matplotlib
 
@@ -164,7 +164,7 @@ class DroneNet:
 
     def lookForChainSolution(self, first=True, mode='any'):
         results = []
-        start = time.time()
+        start = perf_counter_ns()
         firstStop = 0
         solutionNode = [-1] * (self.node_number() - 1)
         solutionFlow = [0] * (self.node_number() - 1)
@@ -178,7 +178,7 @@ class DroneNet:
                 if first:
                     break
 
-        stop = time.time()
+        stop = perf_counter_ns()
         return ExactSolution(self, len(results) > 0, firstStop - start, stop - start, results)
 
     def recursiveLookForChainSolution(
@@ -207,7 +207,7 @@ class DroneNet:
             if self.net[solutionNode[index - 1]][node] >= nextBandwidth:
                 results.append((solutionNode.copy(), self.fitnessChain(solutionNode, 0, mode)))
                 if firstStop == 0:
-                    firstStop = time.time()
+                    firstStop = perf_counter_ns()
                 if first:
                     return True, firstStop
 
@@ -895,7 +895,7 @@ class GenAlg:
         
         
     def run(self, dn: DroneNet) -> GASolution:
-        start = time.time()
+        start = perf_counter_ns()
         
         solution = []
         solutionFitness = -1
@@ -933,7 +933,7 @@ class GenAlg:
             
             ga.run()
             
-            executionTime = time.time() - start
+            executionTime = perf_counter_ns() - start
             
             currentSolution, currentSolutionFitness, currentSolutionIdx = ga.best_solution()  # @UnusedVariable
             

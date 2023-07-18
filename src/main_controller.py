@@ -1,5 +1,6 @@
 #  Copyright (c) 2023. Salim Janji.
 #   All rights reserved.
+import warnings
 
 from src.em_sinr import perform_sinr_em
 from src.users import User
@@ -8,7 +9,7 @@ from src.macro_base_station import MacroBaseStation
 import numpy as np
 from src.parameters import TX_POWER_FSO_MBS, TX_POWER_FSO_DRONE, NUM_UAVS, NUM_MBS, NUM_OF_USERS, \
     USER_MOBILITY_SAVE_NAME, TIME_STEP, DRONE_HEIGHT, SKIP_ENERGY_UPDATE, X_BOUNDARY, Y_BOUNDARY, MBS_LOCATIONS, \
-    REQUIRED_UE_RATE, MAX_FSO_DISTANCE, MEAN_UES_PER_CLUSTER, CLUSTERING_METHOD
+    REQUIRED_UE_RATE, MAX_FSO_DISTANCE, MEAN_UES_PER_CLUSTER, CLUSTERING_METHOD, MIN_N_DEGREES
 from src.environment.user_modeling import ThomasClusterProcess
 
 from src.data_structures import Coords3d
@@ -21,6 +22,7 @@ from multiprocessing import Manager
 from time import sleep
 from src.math_tools import lin2db
 from scipy.cluster import vq
+from src.hierarchical_clustering import perform_dbs_hc, get_centroids
 
 
 class SimulationController:
@@ -34,9 +36,9 @@ class SimulationController:
     base_stations = None
     ue_required_rate = REQUIRED_UE_RATE
 
-    def __init__(self, initial_uavs_coords=None, n_users=NUM_OF_USERS):
+    def __init__(self, initial_uavs_coords=None, n_users=NUM_OF_USERS, mbs_locations=MBS_LOCATIONS):
         self.base_stations = [MacroBaseStation(mbs_id=mbs_id, coords=mbs_coords)
-                              for mbs_id, mbs_coords in zip(range(len(MBS_LOCATIONS)), MBS_LOCATIONS)]
+                              for mbs_id, mbs_coords in zip(range(len(mbs_locations)), mbs_locations)]
         self.create_drone_stations()
         self.reset_users_model()
         self.irradiation_manager = None
@@ -76,7 +78,7 @@ class SimulationController:
         return iter
 
     def perform_kmeans(self):
-        ues_locs = np.vstack([_user.coords.as_2d_array() for _user in self.users])
+        ues_locs = self.get_ues_locs()
         while 1:
             try:
                 locs, _ = vq.kmeans2(ues_locs, len(self.bs_rf_list), minit='++', missing='raise')
@@ -88,11 +90,28 @@ class SimulationController:
         self.update_users_rfs()
         return 0
 
-    def localize_drones(self, _method=CLUSTERING_METHOD):
+    def get_ues_locs(self):
+        return np.vstack([_user.coords.as_2d_array() for _user in self.users])
+
+    def perform_hierarchical_clustering(self, max_fso_distance, min_n_degrees, n_clusters):
+        linkage_matrix, n_clusters_possible = perform_dbs_hc(
+            self.users, [_bs.coords.as_2d_array() for _bs in self.base_stations[:NUM_MBS]], max_fso_distance,
+            min_n_degrees)
+        if n_clusters < n_clusters_possible:
+            warnings.warn(f"Number of clusters {n_clusters} is less than possible {n_clusters_possible}!")
+        locs = get_centroids(n_clusters, linkage_matrix, self.get_ues_locs())
+        for idx, bs in enumerate(self.bs_rf_list):
+            bs.coords.update_coords_from_array(locs[idx])
+        return n_clusters_possible
+
+    def localize_drones(self, _method=CLUSTERING_METHOD, max_fso_distance=MAX_FSO_DISTANCE, min_n_degrees=MIN_N_DEGREES,
+                        n_dbs=NUM_UAVS):
         if _method == 0:
             return self.perform_sinr_em()
-        else:
+        elif _method == 1:
             return self.perform_kmeans()
+        else:
+            return self.perform_hierarchical_clustering(max_fso_distance, min_n_degrees, n_dbs)
 
     def get_required_capacity_per_dbs(self):
         return np.array([_bs.n_associated_users * self.ue_required_rate for _bs in self.bs_rf_list])
@@ -314,21 +333,21 @@ if __name__ == "__main__":
     # plt.show()
 
     # ###############KMEANS VS EM##################
-    n_iters = 100
-    kmeans_means, em_means = np.zeros(n_iters), np.zeros(n_iters)
-    for _iter in range(n_iters):
-        a.reset_users_model()
-        n_iters = a.localize_drones(0)
-        print("EM Iters: ", n_iters)
-        a.update_users_rfs()
-        sinrs_db = lin2db(a.get_users_sinrs())
-        em_means[_iter] = sinrs_db.mean()
-
-        n_iters = a.localize_drones(1)
-        a.update_users_rfs()
-        sinrs_db = lin2db(a.get_users_sinrs())
-        kmeans_means[_iter] = sinrs_db.mean()
-        print(em_means.mean(), kmeans_means.mean())
+    # n_iters = 100
+    # kmeans_means, em_means = np.zeros(n_iters), np.zeros(n_iters)
+    # for _iter in range(n_iters):
+    #     a.reset_users_model()
+    #     n_iters = a.localize_drones(0)
+    #     print("EM Iters: ", n_iters)
+    #     a.update_users_rfs()
+    #     sinrs_db = lin2db(a.get_users_sinrs())
+    #     em_means[_iter] = sinrs_db.mean()
+    #
+    #     n_iters = a.localize_drones(1)
+    #     a.update_users_rfs()
+    #     sinrs_db = lin2db(a.get_users_sinrs())
+    #     kmeans_means[_iter] = sinrs_db.mean()
+    #     print(em_means.mean(), kmeans_means.mean())
     #######################################################
 
     # fig, _ =a.generate_plot()

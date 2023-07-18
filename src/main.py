@@ -5,12 +5,13 @@ from src.parameters import NUM_MBS
 from src.mhp.MHP import DroneNet
 from src.mhp.MHP import GenAlg
 from src.parameters import CALCULATE_EXACT_FSO_NET_SOLUTION, CALCULATE_EXACT_FSO_NET_SOLUTION_FIRST_ONLY, FSO_NET_GENECTIC_ALGORITHM_TIME_LIMIT, \
-    TX_POWER_FSO_DRONE, NUM_UAVS, MEAN_UES_PER_CLUSTER, MAX_FSO_DISTANCE, REQUIRED_UE_RATE, SAVE_MHP_DATA, CLUSTERING_METHOD
+    TX_POWER_FSO_DRONE, NUM_UAVS, MEAN_UES_PER_CLUSTER, MAX_FSO_DISTANCE, REQUIRED_UE_RATE, SAVE_MHP_DATA, CLUSTERING_METHOD, MIN_N_DEGREES,\
+    X_BOUNDARY, Y_BOUNDARY, RANDOMIZE_MBS_LOCS
 import numpy as np
 import random
 from multiprocessing import Pool
 import os
-from time import time
+from time import time, perf_counter_ns
 from itertools import repeat
 import pickle
 import string
@@ -21,7 +22,7 @@ from datetime import datetime
 
 
 #n_drones_total = [8, 9, 10, 11, 12, 13, 14]
-n_drones_total = range(8, 15)
+n_drones_total = range(20, 40, 10)
 #ue_rate = [5e6, 7e6, 9e6]  # , 11e6]
 ue_rate = [5e6]
 max_fso_distance = [3000, 4000, 5000]
@@ -35,16 +36,20 @@ def log(msg):
     logFile = open('info.log', 'a')
     logFile.write(datetime.now().strftime('%Y-%m-%d_%H-%M-%S ') + msg + '\n')
     logFile.close()
-    
+
 def csv(data):
     global datetime_now
     csvFile = open('info.csv', 'a')
     csvFile.write(data + '\n')
     csvFile.close()
-    
+
 class Simulator(SimulationController):
     def __init__(self):
         super().__init__()
+
+    def randomize_mbs_locs(self):
+        for _bs in self.base_stations[:NUM_MBS]:
+            _bs.coords.update_coords_from_array([np.random.uniform(low=X_BOUNDARY[0], high=X_BOUNDARY[1]), np.random.uniform(low=Y_BOUNDARY[0], high=Y_BOUNDARY[1])])
 
     def set_drones_number(self, n_drones=NUM_UAVS):
         current_n_drones = len(self.base_stations) - NUM_MBS
@@ -59,7 +64,9 @@ class Simulator(SimulationController):
                                max_fso_distance=MAX_FSO_DISTANCE, fso_transmit_power=TX_POWER_FSO_DRONE, em_n_iters=0):
         # self.set_drones_number(n_drones)
         # self.reset_users_model()
-        # em_n_iters = self.localize_drones()
+        if CLUSTERING_METHOD == 2:
+            min_n_clusters = self.localize_drones(max_fso_distance=max_fso_distance, min_n_degrees=MIN_N_DEGREES,
+                                                  n_dbs=n_drones)
         self.ue_required_rate = ue_rate
         self.get_fso_capacities(max_fso_distance, fso_transmit_power)
         mbs_list = self.base_stations[:NUM_MBS]
@@ -68,7 +75,7 @@ class Simulator(SimulationController):
                                  self.fso_links_capacs)
 
         exactSolution = dn.lookForChainSolution(first=CALCULATE_EXACT_FSO_NET_SOLUTION_FIRST_ONLY, mode='bestNodes')
-        
+
         if exactSolution.found:
             ga = GenAlg(timeLimit=FSO_NET_GENECTIC_ALGORITHM_TIME_LIMIT)
             gaSolution = ga.run(dn)
@@ -79,7 +86,7 @@ class Simulator(SimulationController):
             time_ga = float(gaSolution.time)
             time_full = exactSolution.fullTime
             ga_percentage = 100 * gaSolution.score / exactSolution.bestScore
-            
+
             if SAVE_MHP_DATA:
                 msg = '  . iteration=' + str(test_iteration) + ' n_drones=' + str(n_drones) + ' ue_rate=' + str(ue_rate) + ' max_dist=' + str(max_fso_distance) + ' power=' + str(fso_transmit_power) + ' em_n_iters=' + str(em_n_iters) + ' mbs=' + str(len(mbs_list)) + ' dbs=' + str(len(dbs_list)) + ' links=' + str(dn.edge_number()) + ' exFullTime=' + str(exactSolution.fullTime) + ' exFirstTime=' + str(exactSolution.firstTime) + ' gaTime=' + str(gaSolution.time) + ' all_sol=' + str(n_solutions) + ' ga_percentage = ' + str(int(ga_percentage))
                 print(msg)
@@ -93,13 +100,13 @@ class Simulator(SimulationController):
             time_first = 0
             time_full = exactSolution.fullTime
             ga_percentage = 0
-            
+
             if SAVE_MHP_DATA:
                 msg = '  X iteration=' + str(test_iteration) + ' n_drones=' + str(n_drones) + ' ue_rate=' + str(ue_rate) + ' max_dist=' + str(max_fso_distance) + ' power=' + str(fso_transmit_power) + ' em_n_iters=' + str(em_n_iters) + ' mbs=' + str(len(mbs_list)) + ' dbs=' + str(len(dbs_list)) + ' links=' + str(dn.edge_number()) + ' exFullTime=' + str(exactSolution.fullTime)
                 print(msg)
                 log(msg)
                 csv('false;'+str(test_iteration)+';'+str(n_drones)+';'+str(ue_rate)+';'+str(max_fso_distance)+';'+str(fso_transmit_power)+';'+str(em_n_iters)+';'+str(len(mbs_list))+';'+str(len(dbs_list))+';'+str(dn.edge_number())+';'+str(exactSolution.fullTime))
-        
+
         return n_solutions, score_ga, score_exact, time_ga, time_first, ga_percentage, time_full, em_n_iters
         # results
 
@@ -107,10 +114,16 @@ class Simulator(SimulationController):
 def perform_simulation_run_main(test_iteration, n_drones, ue_rate=ue_rate, max_fso_distance=max_fso_distance,
                                 fso_transmit_power=fso_transmit_power):
     sim = Simulator()
-    pool = Pool(5)
+    pool = Pool(5, maxtasksperchild=1)
+    if RANDOMIZE_MBS_LOCS:
+        sim.randomize_mbs_locs()
     sim.set_drones_number(n_drones)
     sim.reset_users_model()
-    em_n_iters = sim.localize_drones(CLUSTERING_METHOD) #Here we can pass 1 to force using Kmeans
+    if CLUSTERING_METHOD < 2:
+        em_n_iters = sim.localize_drones(CLUSTERING_METHOD) #Here we can pass 1 to force using Kmeans
+    else:
+        em_n_iters = 0
+    print("EM iters:", em_n_iters)
     res = np.zeros((8, len(ue_rate), len(max_fso_distance), len(fso_transmit_power)))
     # for idx_1, _ue_rate in enumerate(ue_rate):
     # sim.ue_required_rate = _ue_rate
@@ -126,11 +139,28 @@ def perform_simulation_run_main(test_iteration, n_drones, ue_rate=ue_rate, max_f
                                                                 repeat(_fso_transmit_power),
                                                                 repeat(em_n_iters)))).transpose()
     pool.close()
+    pool.join()
+    pool.terminate()
     return res
 
 
 if __name__ == '__main__':
-    run_idx = 0
+    ###TIME testing GA vs Exact
+    # sim_ctrl = Simulator()
+    # sim_ctrl.localize_drones(1)
+    # sim_ctrl.get_fso_capacities()
+    # mbs_list = sim_ctrl.base_stations[:NUM_MBS]
+    # dbs_list = sim_ctrl.base_stations[NUM_MBS:]
+    # dn = DroneNet.createArea(mbs_list, dbs_list, sim_ctrl.get_required_capacity_per_dbs(),
+    #                          sim_ctrl.fso_links_capacs)
+    #
+    # exactSolution = dn.lookForChainSolution(first=CALCULATE_EXACT_FSO_NET_SOLUTION_FIRST_ONLY, mode='bestNodes')
+    # ga = GenAlg(timeLimit=FSO_NET_GENECTIC_ALGORITHM_TIME_LIMIT)
+    # gaSolution = ga.run(dn)
+    # print(gaSolution.time, exactSolution.fullTime, gaSolution.time/ exactSolution.fullTime)
+################################################ SIMULATION
+
+    run_idx = 3
     continue_sim = False
 
     def update_run_params(iter_idx=1):
@@ -146,7 +176,7 @@ if __name__ == '__main__':
         assert (start_iter > 1)
     else:
         start_iter = 1
-        
+
     res_iter = np.zeros((8, len(n_drones_total), len(ue_rate), len(max_fso_distance), len(fso_transmit_power)))
     for test_iteration in range(start_iter, NUM_ITER + 1):
         print(f"iteration {test_iteration}")
@@ -167,19 +197,22 @@ if __name__ == '__main__':
 
     # res = perform_simulation_run_main(7, ue_rate, max_fso_distance, fso_transmit_power)
     # res = sim.perform_simulation_run()
-
+################################################################################################# Introduction
     # #Initialize simulation controller with UE distributed in clusters,
     # # and UAVs distributed randomly, and Macro base stations located according
     # # to settings in parameters.py (MBS_LOCATIONS)
-    # sim_ctrl = SimulationController()
+    # sim_ctrl = Simulator()
+    #
+    # #Generate random MBS lcoations
+    # sim_ctrl.randomize_mbs_locs()
     #
     # #Generate plot and show UEs, DBSs, and MBSs
     # fig, _ = sim_ctrl.generate_plot()
     # fig.show()
     #
     # #Locate DBSs according to EM algorithm which optimizes channel quality.
-    # Select which clustering method {0: SINR-EM, 1- Kmeans}
-    # sim_ctrl.localize_drones(0)
+    # # Select which clustering method {0: SINR-EM, 1- Kmeans, 2- hierarchical}
+    # sim_ctrl.localize_drones(CLUSTERING_METHOD)
     #
     # #If we plot again we can see new DBSs locations
     # fig, _ = sim_ctrl.generate_plot()
@@ -189,7 +222,8 @@ if __name__ == '__main__':
     # sim_ctrl.get_fso_capacities()
     #
     # # Plot FSO capacities graph with capacity requirement of each cluster
-    # sim_ctrl.generate_plot_capacs()
+    # fig_fso = sim_ctrl.generate_plot_capacs()
+    # fig_fso.show()
     #
     # # #Call this to generate new UEs distribution
     # # sim_ctrl.reset_users_model()
@@ -217,8 +251,8 @@ if __name__ == '__main__':
     # # Construct drone net
     # dn = DroneNet.createArea(mbs_list, dbs_list, sim_ctrl.get_required_capacity_per_dbs(), sim_ctrl.fso_links_capacs)
     # dn.print()
-    #
-    # #Exact solution, long time
+
+    #Exact solution, long time
     # if CALCULATE_EXACT_FSO_NET_SOLUTION:
     #     exactSolution = dn.lookForChainSolution(first=False, mode='bestNodes')
     #     exactSolution.print()
@@ -226,8 +260,8 @@ if __name__ == '__main__':
     #         ga = GenAlg(timeLimit=FSO_NET_GENECTIC_ALGORITHM_TIME_LIMIT)
     #         gaSolution = ga.run(dn)
     #         gaSolution.print(exactSolution)
-    # # else:
-    # #     ga = GenAlg(timeLimit=FSO_NET_GENECTIC_ALGORITHM_TIME_LIMIT)
-    # #     gaSolution = ga.run(dn)
-    # #     #gaSolution.print(draw = True, drawFileName = 'FSO_net_ga_solution')
-    # #     gaSolution.print()
+    # else:
+    #     ga = GenAlg(timeLimit=FSO_NET_GENECTIC_ALGORITHM_TIME_LIMIT)
+    #     gaSolution = ga.run(dn)
+    #     #gaSolution.print(draw = True, drawFileName = 'FSO_net_ga_solution')
+    #     gaSolution.print()

@@ -8,9 +8,10 @@ import matplotlib.pyplot as plt
 from matplotlib import markers, lines, colors as mcolors
 import matplotlib as mpl
 
+
 results_folder = os.getcwd() + "\\"
 
-run_idx = 8
+run_idx = 2
 
 _markers = list(markers.MarkerStyle.markers.keys())
 if None in _markers: _markers.remove(None)

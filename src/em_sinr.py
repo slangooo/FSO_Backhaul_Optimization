@@ -6,7 +6,7 @@ from src.math_tools import lin2db
 from scipy.special import softmax
 import matplotlib.pyplot as plt
 
-MAX_ITER = 100
+MAX_ITER = 50
 SINR_EM_THRESHOLD = 1
 
 

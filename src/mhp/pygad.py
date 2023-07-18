@@ -1439,7 +1439,7 @@ class GA:
             if stop_run:
                 break
 
-            time.sleep(self.delay_after_gen)
+            time.sleep(self.delay_after_gen) #Why?
 
         # Save the fitness of the last generation.
         if self.save_solutions:

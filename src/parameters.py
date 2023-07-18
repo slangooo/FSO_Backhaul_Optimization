@@ -23,16 +23,20 @@ MEAN_UES_PER_CLUSTER = 5 #Mean number of UEs in cluster
 MBS_HEIGHT = 25  # m
 MBS_LOCATIONS = [Coords3d(X_BOUNDARY[0], Y_BOUNDARY[0], MBS_HEIGHT), Coords3d(X_BOUNDARY[1], Y_BOUNDARY[1], MBS_HEIGHT)]
 
-NUM_UAVS = 150 #Number of DBSs. We can increase it if FSO capacities are insufficient, etc.
+NUM_UAVS = 30 #Number of DBSs. We can increase it if FSO capacities are insufficient, etc.
 
 REQUIRED_UE_RATE = 6e6 #Required Mbps per UE. It can be increased to make the problem harder,
                         # or decrease to relax constraint
 
-MAX_FSO_DISTANCE = 4000 #FSO links between nodes that have distance higher than this are assumed to have capacity 0
+MAX_FSO_DISTANCE = 3000 #FSO links between nodes that have distance higher than this are assumed to have capacity 0
 
 TX_POWER_FSO_DRONE = 0.2  # W
 
-CLUSTERING_METHOD = 0 #0 for SINR-EM, and 1 for Kmeans
+CLUSTERING_METHOD = 2 #0 for SINR-EM, and 1 for Kmeans, and 2 for hierarchical
+
+MIN_N_DEGREES = 1
+
+RANDOMIZE_MBS_LOCS = True
 
 ###########################################
 
