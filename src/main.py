@@ -17,7 +17,7 @@ import pickle
 import string
 from datetime import datetime
 
-
+USE_MULTIPROCESSING = False
 
 
 
@@ -125,22 +125,29 @@ def perform_simulation_run_main(test_iteration, n_drones, ue_rate=ue_rate, max_f
         em_n_iters = 0
     print("EM iters:", em_n_iters)
     res = np.zeros((8, len(ue_rate), len(max_fso_distance), len(fso_transmit_power)))
-    # for idx_1, _ue_rate in enumerate(ue_rate):
-    # sim.ue_required_rate = _ue_rate
-    for idx_2, _fso_transmit_power in enumerate(fso_transmit_power):
-        for idx_3, _max_fso_distance in enumerate(max_fso_distance):
-            #     res[:, idx_1, idx_3, idx_2] = sim.perform_simulation_run(n_drones, _ue_rate, _max_fso_distance,
-            #                                                              _fso_transmit_power, em_n_iters)
-            res[:, :, idx_3, idx_2] = np.array(pool.starmap(sim.perform_simulation_run,
-                                                            zip(repeat(test_iteration),
-                                                                repeat(n_drones),
-                                                                ue_rate,
-                                                                repeat(_max_fso_distance),
-                                                                repeat(_fso_transmit_power),
-                                                                repeat(em_n_iters)))).transpose()
-    pool.close()
-    pool.join()
-    pool.terminate()
+    if USE_MULTIPROCESSING:
+        # for idx_1, _ue_rate in enumerate(ue_rate):
+        # sim.ue_required_rate = _ue_rate
+        for idx_2, _fso_transmit_power in enumerate(fso_transmit_power):
+            for idx_3, _max_fso_distance in enumerate(max_fso_distance):
+                #     res[:, idx_1, idx_3, idx_2] = sim.perform_simulation_run(n_drones, _ue_rate, _max_fso_distance,
+                #                                                              _fso_transmit_power, em_n_iters)
+                res[:, :, idx_3, idx_2] = np.array(pool.starmap(sim.perform_simulation_run,
+                                                                zip(repeat(test_iteration),
+                                                                    repeat(n_drones),
+                                                                    ue_rate,
+                                                                    repeat(_max_fso_distance),
+                                                                    repeat(_fso_transmit_power),
+                                                                    repeat(em_n_iters)))).transpose()
+        pool.close()
+        pool.join()
+        pool.terminate()
+    else:
+        for idx_1, _ue_rate in enumerate(ue_rate):
+            for idx_2, _fso_transmit_power in enumerate(fso_transmit_power):
+                for idx_3, _max_fso_distance in enumerate(max_fso_distance):
+                    res[:, idx_1, idx_3, idx_2] = sim.perform_simulation_run(test_iteration, n_drones, _ue_rate, _max_fso_distance,
+                                                                             _fso_transmit_power, em_n_iters)
     return res
 
 
