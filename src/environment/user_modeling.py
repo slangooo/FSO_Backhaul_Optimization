@@ -103,9 +103,9 @@ class ThomasClusterProcess(UserSpatialModel):
 
     def generate_plot(self):
         fig, ax = plt.subplots()
-        ax.scatter(self.childs_xs, self.childs_ys, edgecolor='b', facecolor='none', alpha=0.5, marker=".", label="UEs")
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
+        ax.scatter(self.childs_xs, self.childs_ys, edgecolor='lightsteelblue', facecolor='none', alpha=0.8, marker=".",s=1.5, label="GU")
+        ax.set_xlabel("x [km]")
+        ax.set_ylabel("y [km]")
         ax.set_xlim(X_BOUNDARY[0] - 6*SIGMA_UE_PER_CLUSTER,
                  X_BOUNDARY[1] + 6*SIGMA_UE_PER_CLUSTER)
         ax.set_ylim(Y_BOUNDARY[0] - 6*SIGMA_UE_PER_CLUSTER,
@@ -118,6 +118,8 @@ if __name__ == '__main__':
     tc = ThomasClusterProcess()
     tc.generate_distribution()
     fig, ax = tc.generate_plot()
+    fig.legend(loc="upper left", borderaxespad=6)
+    fig.savefig(f'users_distribution.eps', format='eps')
     fig.show()
     print(tc.n_users)
     print(tc.n_ues_per_cluster)

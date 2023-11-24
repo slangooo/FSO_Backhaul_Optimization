@@ -166,49 +166,49 @@ if __name__ == '__main__':
     # gaSolution = ga.run(dn)
     # print(gaSolution.time, exactSolution.fullTime, gaSolution.time/ exactSolution.fullTime)
 ################################################ SIMULATION
-
-    run_idx = 3
-    continue_sim = False
-
-    def update_run_params(iter_idx=1):
-        run_params = [n_drones_total, ue_rate, max_fso_distance, fso_transmit_power, iter_idx]
-        with open(results_folder + f"params_run{run_idx}.pkl", 'wb') as f:
-            pickle.dump(run_params, f)
-
-    if continue_sim:
-        res = np.load(results_folder + f'results_of_run{run_idx}.npy')
-        with open(results_folder + f"params_run{run_idx}.pkl", 'rb') as f:
-            run_params = pickle.load(f)
-        start_iter = run_params[-1] + 1
-        assert (start_iter > 1)
-    else:
-        start_iter = 1
-
-    res_iter = np.zeros((8, len(n_drones_total), len(ue_rate), len(max_fso_distance), len(fso_transmit_power)))
-    for test_iteration in range(start_iter, NUM_ITER + 1):
-        print(f"iteration {test_iteration}")
-        for n_drone_idx, _n_drones in enumerate(n_drones_total):
-            print("N Drones =", _n_drones)
-            res_iter[:, n_drone_idx, :, :, :] = perform_simulation_run_main(test_iteration=test_iteration,
-                                                                            n_drones=_n_drones)
-        if np.isnan(res_iter).any():
-            print("FOUND NAN!")
-            break
-        if test_iteration == 1:
-            res = res_iter.copy()
-        else:
-            res = res + (res_iter - res) / test_iteration
-        np.save(results_folder + f'results_of_run{run_idx}', res)
-        update_run_params(test_iteration + 1)
-    np.save(results_folder + f'results_of_run{run_idx}', res)
-
-    # res = perform_simulation_run_main(7, ue_rate, max_fso_distance, fso_transmit_power)
-    # res = sim.perform_simulation_run()
+    #
+    # run_idx = 3
+    # continue_sim = False
+    #
+    # def update_run_params(iter_idx=1):
+    #     run_params = [n_drones_total, ue_rate, max_fso_distance, fso_transmit_power, iter_idx]
+    #     with open(results_folder + f"params_run{run_idx}.pkl", 'wb') as f:
+    #         pickle.dump(run_params, f)
+    #
+    # if continue_sim:
+    #     res = np.load(results_folder + f'results_of_run{run_idx}.npy')
+    #     with open(results_folder + f"params_run{run_idx}.pkl", 'rb') as f:
+    #         run_params = pickle.load(f)
+    #     start_iter = run_params[-1] + 1
+    #     assert (start_iter > 1)
+    # else:
+    #     start_iter = 1
+    #
+    # res_iter = np.zeros((8, len(n_drones_total), len(ue_rate), len(max_fso_distance), len(fso_transmit_power)))
+    # for test_iteration in range(start_iter, NUM_ITER + 1):
+    #     print(f"iteration {test_iteration}")
+    #     for n_drone_idx, _n_drones in enumerate(n_drones_total):
+    #         print("N Drones =", _n_drones)
+    #         res_iter[:, n_drone_idx, :, :, :] = perform_simulation_run_main(test_iteration=test_iteration,
+    #                                                                         n_drones=_n_drones)
+    #     if np.isnan(res_iter).any():
+    #         print("FOUND NAN!")
+    #         break
+    #     if test_iteration == 1:
+    #         res = res_iter.copy()
+    #     else:
+    #         res = res + (res_iter - res) / test_iteration
+    #     np.save(results_folder + f'results_of_run{run_idx}', res)
+    #     update_run_params(test_iteration + 1)
+    # np.save(results_folder + f'results_of_run{run_idx}', res)
+    #
+    # # res = perform_simulation_run_main(7, ue_rate, max_fso_distance, fso_transmit_power)
+    # # res = sim.perform_simulation_run()
 ################################################################################################# Introduction
     # #Initialize simulation controller with UE distributed in clusters,
     # # and UAVs distributed randomly, and Macro base stations located according
     # # to settings in parameters.py (MBS_LOCATIONS)
-    # sim_ctrl = Simulator()
+    sim_ctrl = Simulator()
     #
     # #Generate random MBS lcoations
     # sim_ctrl.randomize_mbs_locs()
@@ -219,11 +219,14 @@ if __name__ == '__main__':
     #
     # #Locate DBSs according to EM algorithm which optimizes channel quality.
     # # Select which clustering method {0: SINR-EM, 1- Kmeans, 2- hierarchical}
-    # sim_ctrl.localize_drones(CLUSTERING_METHOD)
+    sim_ctrl.localize_drones(CLUSTERING_METHOD)
     #
     # #If we plot again we can see new DBSs locations
-    # fig, _ = sim_ctrl.generate_plot()
-    # fig.show()
+    sim_ctrl.get_fso_capacities()
+    fig, _ = sim_ctrl.generate_plot()
+    fig.savefig(os.path.join(r'C:\Users\user\Desktop\Own Papers\Backhaul Optimization\Paper', f'network_example_.eps'), format='eps')
+    fig.savefig(os.path.join(r'C:\Users\user\Desktop\Own Papers\Backhaul Optimization\Paper', f'network_example_.png'), format='png')
+    fig.show()
     #
     # #Calculate FSO link capacities for current locations
     # sim_ctrl.get_fso_capacities()

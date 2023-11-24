@@ -106,18 +106,9 @@ def perform_dbs_hc(users, mbs_locs, distance_threshold=MAX_FSO_DISTANCE, min_n_d
     flat_p_0 = pdist(ues_locs).round(2)  # D
 
     flat_ue_mbs_dist = pdist(ues_mbs_locs).round(2)
-    dist_flags = flat_ue_mbs_dist <= distance_threshold
+    dist_flags = flat_p_0 <= distance_threshold
     dist_flags_square = squareform(dist_flags)
     degrees_vec = np.sum(dist_flags_square, 1)
-    old_degrees_vec = np.empty_like(degrees_vec)
-    old_degrees_vec[:] = degrees_vec
-    unsatisfied_idxs = np.argwhere(
-        degrees_vec <= min_n_degrees + 1)  # +1 to account for possibility of having two clusters removed from neighborhood (x and y)
-    clusters_lock = np.reshape(~dist_flags_square[unsatisfied_idxs].sum(0).astype(bool), ues_mbs_locs.shape[0])
-    clusters_lock[unsatisfied_idxs] = False
-
-    mbs_dists = np.vstack((np.array([euclidean(_ue_loc, mbs_locs[0]) for _ue_loc in ues_locs]),
-                           np.array([euclidean(_ue_loc, mbs_locs[1]) for _ue_loc in ues_locs]))).T
 
     linkage_matrix = np.empty((n_ues - 1, 4), dtype=float)
     cardinalities = np.ones(n_ues, dtype=int)
@@ -127,7 +118,6 @@ def perform_dbs_hc(users, mbs_locs, distance_threshold=MAX_FSO_DISTANCE, min_n_d
     min_dist = np.empty(n_ues - 1)
 
     min_dist_heap = []
-    min_dist_heap_2 = []
     heap_dict = {}
 
     def remove_heap_entry(key, dict_in):
@@ -146,46 +136,16 @@ def perform_dbs_hc(users, mbs_locs, distance_threshold=MAX_FSO_DISTANCE, min_n_d
         min_dist[x] = pair.value
         new_pair = Pair(x, pair.value)
         heap_dict[x] = new_pair
-        if clusters_lock[x] and clusters_lock[pair.key]:
-            heapq.heappush(min_dist_heap, new_pair)
-        else:
-            heapq.heappush(min_dist_heap_2, new_pair)
-    detectd_first_breach = False
+        heapq.heappush(min_dist_heap, new_pair)
+
     for k in range(n_ues - 1):
-        for i in range(n_ues - 1):
-            heap_empty = False
-            while 1:
-                if len(min_dist_heap) == 0:
-                    heap_empty = True
-                    break
-                pair = min_dist_heap[0]
-                if pair.removed:
-                    heapq.heappop(min_dist_heap)
-                    continue
-                else:
-                    break
-            if heap_empty:
-                if not detectd_first_breach:
-                    detectd_first_breach = n_ues - k + 1
-                    print("min n_clusters_possible:", detectd_first_breach)
-                pair = min_dist_heap_2[0]
-                while pair.removed:
-                    heapq.heappop(min_dist_heap_2)
-                    pair = min_dist_heap_2[0]
-
-            if (not clusters_lock[pair.key] or not clusters_lock[neighbor[pair.key]]) and not heap_empty and not detectd_first_breach:
-                replace_entry(pair, heap_dict, min_dist_heap_2)
-                heapq.heappop(min_dist_heap)
-                continue
-
+        for i in range(n_ues - k):
+            pair = min_dist_heap[0]
             x, dist = pair.key, pair.value
             y = neighbor[x]
 
             if dist == flat_p_0[condensed_index(n_ues, x, y)]:
-                if not heap_empty:
-                    heapq.heappop(min_dist_heap)
-                else:
-                    heapq.heappop(min_dist_heap_2)
+                #heapq.heappop(min_dist_heap)
                 break
 
             pair = find_min_dist(n_ues, flat_p_0, cardinalities, x)
@@ -193,13 +153,10 @@ def perform_dbs_hc(users, mbs_locs, distance_threshold=MAX_FSO_DISTANCE, min_n_d
             neighbor[x] = y
             min_dist[x] = dist
             new_pair = Pair(x, pair.value)
-            if not heap_empty:
-                remove_heap_entry(x, heap_dict)
-                heapq.heapreplace(min_dist_heap, new_pair)
-                heap_dict[x] = new_pair
-            else:
-                heapq.heappop(min_dist_heap_2)
-                replace_entry(new_pair, heap_dict, min_dist_heap)
+            replace_entry(new_pair, heap_dict, min_dist_heap)
+
+            heapq.heappop(min_dist_heap)
+
 
         id_x = cluster_id[x]
         id_y = cluster_id[y]

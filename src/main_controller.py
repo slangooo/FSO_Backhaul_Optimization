@@ -23,8 +23,16 @@ from time import sleep
 from src.math_tools import lin2db
 from scipy.cluster import vq
 from src.hierarchical_clustering import perform_dbs_hc, get_centroids
+from matplotlib.font_manager import FontProperties
 
-
+font_property_normal = FontProperties()
+font_property_normal.set_size(12)
+font_property_normal.set_weight('bold')
+font_property_normal.set_family('Times New Roman')
+font_property_fso_capacs = font_property_normal.copy()
+font_property_fso_capacs.set_style('italic')
+font_property_fso_capacs.set_weight('light')
+font_property_fso_capacs.set_size(10)
 class SimulationController:
     plot_flag = False
     bs_rf_list = []
@@ -99,6 +107,7 @@ class SimulationController:
             min_n_degrees)
         if n_clusters < n_clusters_possible:
             warnings.warn(f"Number of clusters {n_clusters} is less than possible {n_clusters_possible}!")
+        print("Getting Centroids!")
         locs = get_centroids(n_clusters, linkage_matrix, self.get_ues_locs())
         for idx, bs in enumerate(self.bs_rf_list):
             bs.coords.update_coords_from_array(locs[idx])
@@ -287,12 +296,12 @@ class SimulationController:
                 ax.plot([dbs_i.coords.x, dbs_j.coords.x], [dbs_i.coords.y, dbs_j.coords.y],
                         color='black', linestyle='dashed', linewidth=0.5, alpha=0.5)
                 ax.text(abs(dbs_i.coords.x + dbs_j.coords.x) / 2, abs(dbs_i.coords.y + dbs_j.coords.y) / 2,
-                        f'{self.fso_links_capacs[idx_i, idx_j]}', fontsize=8)
+                        f'{self.fso_links_capacs[idx_i, idx_j]:.0f}')
 
         return fig
 
     def generate_plot(self, plot_ues=True):
-        mpl.rc('font', family='Times New Roman')
+        mpl.rc('font', family='Times New Roman', size=10)
         if plot_ues:
             fig, ax = self.users_model.generate_plot()
         else:
@@ -308,8 +317,34 @@ class SimulationController:
         for mbs_idx in range(NUM_MBS):
             mbs_xs[mbs_idx] = self.base_stations[mbs_idx].coords.x
             mbs_ys[mbs_idx] = self.base_stations[mbs_idx].coords.y
-        ax.scatter(dbs_xs, dbs_ys, edgecolor='red', facecolor='black', alpha=1, marker="s", label="DBSs")
-        ax.scatter(mbs_xs, mbs_ys, edgecolor='green', facecolor='black', alpha=1, marker="o", label="MBSs")
+        ax.scatter(dbs_xs, dbs_ys, edgecolor='blue', facecolor=(0, 0, 1, 0), marker="P", s=50, label="DBS")
+        ax.scatter(mbs_xs, mbs_ys, edgecolor='green', facecolor='black', alpha=1, marker="o", label="MBS")
+
+        #plot required rate per cluster
+        req_capacs = self.get_required_capacity_per_dbs()
+        for idx_i, dbs_i in enumerate(self.base_stations):
+            if idx_i >= NUM_MBS:
+                ax.text(dbs_i.coords.x - 250, dbs_i.coords.y + 200,
+                        f'{req_capacs[idx_i - NUM_MBS] / 1e6:.0f}', fontproperties=font_property_normal, color='black')
+        legend_flag_1=0
+        for idx_i, dbs_i in enumerate(self.base_stations):
+            for idx_j, dbs_j in enumerate(self.base_stations):
+                if idx_i == idx_j or self.fso_links_capacs[idx_i, idx_j] < 1:
+                    continue
+                if dbs_i.coords.get_distance_to(dbs_j.coords) > MAX_FSO_DISTANCE:
+                    continue
+                if legend_flag_1==0:
+                    ax.plot([dbs_i.coords.x, dbs_j.coords.x], [dbs_i.coords.y, dbs_j.coords.y],
+                            color='black', linestyle='dotted', linewidth=0.5, alpha=0.5, label='Possible backhaul')
+                    legend_flag_1=1
+                else:
+                    ax.plot([dbs_i.coords.x, dbs_j.coords.x], [dbs_i.coords.y, dbs_j.coords.y],
+                            color='black', linestyle='dotted', linewidth=0.5, alpha=0.5)
+
+                ax.text(abs(dbs_i.coords.x + dbs_j.coords.x) / 2, abs(dbs_i.coords.y + dbs_j.coords.y) / 2,
+                        f'{self.fso_links_capacs[idx_i, idx_j]:.0f}', fontproperties=font_property_fso_capacs, color='dimgray')
+
+        fig.legend(loc="upper left", borderaxespad=1, ncol=2)
         return fig, ax
 
 

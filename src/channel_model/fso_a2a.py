@@ -174,6 +174,7 @@ class StatisticalModel:
 
     @staticmethod
     def get_ig_fluctuations_eigen_values(tx_coords: Coords3d, rx_coords: Coords3d, phi, theta, distance, lens_radius):
+        #TODO: Most constants are zero. Simplify.
         _x, _y, _z = StatisticalModel.get_relative_location(tx_coords, rx_coords)
         sigma_x, sigma_y, sigma_z, sigma_phi, sigma_theta = \
             StatisticalModel.get_fluctuations_variances(distance, lens_radius)

@@ -17,20 +17,20 @@ Y_BOUNDARY = [0, 10000]
 SIGMA_UE_PER_CLUSTER = 200 # Variance of UEs in each cluster (larger value -> more dispersion)
 CLUSTERS_DENSITY = 0.000002 #Cluster density in area
 N_CLUSTERS = X_BOUNDARY[1]*Y_BOUNDARY[1]*CLUSTERS_DENSITY #Resulting number of clusters
-MEAN_UES_PER_CLUSTER = 5 #Mean number of UEs in cluster
+MEAN_UES_PER_CLUSTER = 2 #Mean number of UEs in cluster
 
 #Add MBS here below as needed
 MBS_HEIGHT = 25  # m
 MBS_LOCATIONS = [Coords3d(X_BOUNDARY[0], Y_BOUNDARY[0], MBS_HEIGHT), Coords3d(X_BOUNDARY[1], Y_BOUNDARY[1], MBS_HEIGHT)]
 
-NUM_UAVS = 30 #Number of DBSs. We can increase it if FSO capacities are insufficient, etc.
+NUM_UAVS = 20 #Number of DBSs. We can increase it if FSO capacities are insufficient, etc.
 
-REQUIRED_UE_RATE = 6e6 #Required Mbps per UE. It can be increased to make the problem harder,
+REQUIRED_UE_RATE = 40e6 #Required Mbps per UE. It can be increased to make the problem harder,
                         # or decrease to relax constraint
 
 MAX_FSO_DISTANCE = 3000 #FSO links between nodes that have distance higher than this are assumed to have capacity 0
 
-TX_POWER_FSO_DRONE = 0.2  # W
+TX_POWER_FSO_DRONE = 0.05  # W
 
 CLUSTERING_METHOD = 2 #0 for SINR-EM, and 1 for Kmeans, and 2 for hierarchical
 
