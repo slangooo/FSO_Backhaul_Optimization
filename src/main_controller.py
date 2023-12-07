@@ -252,10 +252,10 @@ class SimulationController:
     def get_users_sinrs(self):
         return np.array([_user.rf_transceiver.received_sinr for _user in self.users])
 
-    def generate_plot_capacs(self):
+    def generate_plot_capacs(self, plot_ues=False):
         req_capacs = self.get_required_capacity_per_dbs()
         mpl.rc('font', family='Times New Roman')
-        fig, ax = self.generate_plot(False)
+        fig, ax = self.generate_plot(plot_ues)
         for idx_i, dbs_i in enumerate(self.base_stations):
             if idx_i >= NUM_MBS:
                 ax.text(dbs_i.coords.x + 10, dbs_i.coords.y,

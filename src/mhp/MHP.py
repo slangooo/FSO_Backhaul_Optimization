@@ -59,11 +59,18 @@ class DroneNet:
     #                            % of : size
     # topology                 : default 'corners', other options 'center'
     @staticmethod
-    def createRandomAreaRelative(size, base_number, drone_number, max_bandwidth, net_bandwidth_percentage, max_range_percentage, topology = 'corners'):
+    def createRandomAreaRelative(
+            size, base_number, drone_number, max_bandwidth,
+            net_bandwidth_percentage,
+            max_range_percentage,
+            topology = 'corners'):
         net_bandwidth = int(drone_number * max_bandwidth * net_bandwidth_percentage / (2 * base_number * 100))
         max_range = int(size * max_range_percentage / 100)
         
-        return DroneNet.createRandomArea(size, base_number, drone_number, max_bandwidth, net_bandwidth, max_range, topology)
+        return DroneNet.createRandomArea(
+            size, base_number, drone_number, max_bandwidth,
+            net_bandwidth, max_range,
+            topology)
         
     # Square area with four single base stations at corners
     # size          : square area dimension
@@ -95,9 +102,9 @@ class DroneNet:
         
         if (topology == 'corners'):
             corners = [[   0,    0],
-                       [   0, size],
+                       [size, size],
                        [size,    0],
-                       [size, size]]
+                       [   0, size]]
             for i in range(base_number):
                 dn.pos[drone_number + i] = corners[i % 4]
         elif (topology == 'center'):
@@ -602,7 +609,7 @@ class DroneNet:
             maxNodeValue = max(maxNodeValue, self.bandwidth[i])
 
         for i in range(self.drone_number):
-            node_size[i] = self.bandwidth[i] * 10000 / maxNodeValue
+            node_size[i] = self.bandwidth[i] * 5000 / maxNodeValue
             node_color[i] = "#D2B48C"  # Tan
             edgecolors[i] = "#888888"
         for i in range(self.base_number):
@@ -640,35 +647,47 @@ class DroneNet:
                     edge_labels[key] = str(self.chainsFlows[baseIndex][chainIndex]) + "/" + str(self.net[prevNodeIndex][nodeIndex])
 
                     prevNodeIndex = nodeIndex
-
+        
+        maxpos = 0
+        for pos in self.pos.values():
+            maxpos = max(maxpos, pos[0], pos[1])
+        
+        normpos = {}
+        for i in range(self.node_number()):
+            normpos[i] = numpy.zeros(2, dtype=int)
+            normpos[i][0] = int(100 * self.pos[i][0] / maxpos)
+            normpos[i][1] = int(100 * self.pos[i][1] / maxpos)
+            
         fig, ax = matplotlib.pyplot.subplots(figsize=(20, 20))  # @UnusedVariable
         networkx.draw_networkx_nodes(
             G,
-            self.pos,
+            normpos,
             ax=ax,
             node_size=node_size,
             node_color=node_color,
             edgecolors=edgecolors)
         networkx.draw_networkx_labels(
             G,
-            self.pos,
+            normpos,
             ax=ax,
             labels=self.longlabels)
         networkx.draw_networkx_edges(
             G,
-            self.pos,
+            normpos,
             ax=ax,
             edgelist=edgelist,
             edge_color=edge_color,
             width=edge_width)
         networkx.draw_networkx_edge_labels(
             G,
-            self.pos,
+            normpos,
             ax=ax,
             edge_labels=edge_labels)
 
         if fileName is not None:
             matplotlib.pyplot.savefig(fileName, dpi=300, bbox_inches='tight')
+            
+        matplotlib.pyplot.close()
 
 class ExactSolution:
     def __init__(self, droneNet: DroneNet, found, firstTime, fullTime, results):
