@@ -59,14 +59,18 @@ class StatisticalModel:
         phi, theta = StatisticalModel.get_orientation_angles(tx_coords,
                                                              rx_coords) if not fixed_orientation else (np.pi / 2, np.pi)
         v2 = StatisticalModel.get_v2(v1, phi, theta)
-        t1 = StatisticalModel.get_t1(v1)
-        t2 = StatisticalModel.get_t2(v2, phi, theta)
-        t = (t1 + t2) / 2
         a0 = StatisticalModel.get_max_fraction_a0(v1, v2)
         lambda_1, lambda_2 = StatisticalModel.get_ig_fluctuations_eigen_values(tx_coords, rx_coords, phi, theta,
                                                                                distance,
                                                                                lens_radius)
-        gml = StatisticalModel.get_gml(a0, t, beam_width, misalignment=np.sqrt(lambda_1 + lambda_2))
+        try:
+            t1 = StatisticalModel.get_t1(v1)
+            t2 = StatisticalModel.get_t2(v2, phi, theta)
+            t = (t1 + t2) / 2
+            gml = StatisticalModel.get_gml(a0, t, beam_width, misalignment=np.sqrt(lambda_1 + lambda_2))
+        except:
+            gml = 1
+            t = np.inf
         gain = gml * atmospheric_loss * atm_turb_induced_fading * responsivity
         received_charge_power = (1 - power_split_ratio) * gain * transmit_power
         if get_gain:
@@ -174,7 +178,7 @@ class StatisticalModel:
 
     @staticmethod
     def get_ig_fluctuations_eigen_values(tx_coords: Coords3d, rx_coords: Coords3d, phi, theta, distance, lens_radius):
-        #TODO: Most constants are zero. Simplify.
+        # TODO: Most constants are zero. Simplify.
         _x, _y, _z = StatisticalModel.get_relative_location(tx_coords, rx_coords)
         sigma_x, sigma_y, sigma_z, sigma_phi, sigma_theta = \
             StatisticalModel.get_fluctuations_variances(distance, lens_radius)

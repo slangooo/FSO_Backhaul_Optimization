@@ -9,7 +9,8 @@ from src.macro_base_station import MacroBaseStation
 import numpy as np
 from src.parameters import TX_POWER_FSO_MBS, TX_POWER_FSO_DRONE, NUM_UAVS, NUM_MBS, NUM_OF_USERS, \
     USER_MOBILITY_SAVE_NAME, TIME_STEP, DRONE_HEIGHT, SKIP_ENERGY_UPDATE, X_BOUNDARY, Y_BOUNDARY, MBS_LOCATIONS, \
-    REQUIRED_UE_RATE, MAX_FSO_DISTANCE, MEAN_UES_PER_CLUSTER, CLUSTERING_METHOD, MIN_N_DEGREES
+    REQUIRED_UE_RATE, MAX_FSO_DISTANCE, MEAN_UES_PER_CLUSTER, CLUSTERING_METHOD, MIN_N_DEGREES, COVERAGE_RADIUS, \
+    SKIP_UE_RF_UPDATE
 from src.environment.user_modeling import ThomasClusterProcess
 
 from src.data_structures import Coords3d
@@ -22,8 +23,9 @@ from multiprocessing import Manager
 from time import sleep
 from src.math_tools import lin2db
 from scipy.cluster import vq
-from src.hierarchical_clustering import perform_dbs_hc, get_centroids
+from src.hierarchical_clustering_coverage_disk import perform_dbs_hc, get_centroids
 from matplotlib.font_manager import FontProperties
+from scipy.spatial.distance import squareform, pdist
 
 font_property_normal = FontProperties()
 font_property_normal.set_size(12)
@@ -33,6 +35,8 @@ font_property_fso_capacs = font_property_normal.copy()
 font_property_fso_capacs.set_style('italic')
 font_property_fso_capacs.set_weight('light')
 font_property_fso_capacs.set_size(10)
+
+
 class SimulationController:
     plot_flag = False
     bs_rf_list = []
@@ -45,6 +49,7 @@ class SimulationController:
     ue_required_rate = REQUIRED_UE_RATE
 
     def __init__(self, initial_uavs_coords=None, n_users=NUM_OF_USERS, mbs_locations=MBS_LOCATIONS):
+        self.skip_rf_update = SKIP_UE_RF_UPDATE
         self.base_stations = [MacroBaseStation(mbs_id=mbs_id, coords=mbs_coords)
                               for mbs_id, mbs_coords in zip(range(len(mbs_locations)), mbs_locations)]
         self.create_drone_stations()
@@ -52,6 +57,7 @@ class SimulationController:
         self.irradiation_manager = None
         self.init_users_rfs()
         self.stations_list = []
+
 
     def reset_users_model(self, mean_ues_per_cluster=MEAN_UES_PER_CLUSTER):
         self.users_model = ThomasClusterProcess(mean_ues_per_cluster)
@@ -101,26 +107,44 @@ class SimulationController:
     def get_ues_locs(self):
         return np.vstack([_user.coords.as_2d_array() for _user in self.users])
 
-    def perform_hierarchical_clustering(self, max_fso_distance, min_n_degrees, n_clusters):
-        linkage_matrix, n_clusters_possible = perform_dbs_hc(
+    def set_drones_number(self, n_drones=NUM_UAVS):
+        current_n_drones = len(self.base_stations) - NUM_MBS
+        self.base_stations = self.base_stations[:n_drones + NUM_MBS]
+        if current_n_drones < n_drones:
+            self.add_drone_stations(n_drones - current_n_drones)
+        self.set_ues_base_stations()
+        self.update_users_rfs()
+
+    def perform_hierarchical_clustering(self, max_fso_distance, min_n_degrees, max_coverage_radius, n_dbs,
+                                        set_n_dbs_min=False):
+        linkage_matrix, n_clusters_possible, true_n_clusters_poss = perform_dbs_hc(
             self.users, [_bs.coords.as_2d_array() for _bs in self.base_stations[:NUM_MBS]], max_fso_distance,
-            min_n_degrees)
-        if n_clusters < n_clusters_possible:
-            warnings.warn(f"Number of clusters {n_clusters} is less than possible {n_clusters_possible}!")
-        print("Getting Centroids!")
-        locs = get_centroids(n_clusters, linkage_matrix, self.get_ues_locs())
+            min_n_degrees, max_coverage_radius)
+        # if true_n_clusters_poss != n_clusters_possible:
+        #     print("::",n_clusters_possible, true_n_clusters_poss)
+        if n_dbs > len(linkage_matrix):
+            print("Number of DBS is higher than the number of GNs!!")
+        n_dbs_set = min(n_clusters_possible if set_n_dbs_min else n_dbs, len(linkage_matrix) - 1)
+        self.set_drones_number(n_dbs_set)
+        locs = get_centroids(n_dbs_set, linkage_matrix, self.get_ues_locs())
+        # all_bs_locs = np.vstack((locs, np.array([bs.coords.as_2d_array() for bs in self.base_stations[:NUM_MBS]])))
+        # n_degs = sum(squareform(pdist(all_bs_locs)) <= max_fso_distance)
+
         for idx, bs in enumerate(self.bs_rf_list):
+            if idx >= n_dbs_set:
+                break
             bs.coords.update_coords_from_array(locs[idx])
         return n_clusters_possible
 
     def localize_drones(self, _method=CLUSTERING_METHOD, max_fso_distance=MAX_FSO_DISTANCE, min_n_degrees=MIN_N_DEGREES,
-                        n_dbs=NUM_UAVS):
+                        max_coverage_radius=COVERAGE_RADIUS, n_dbs=NUM_UAVS):
+        self.set_drones_number(n_dbs)
         if _method == 0:
             return self.perform_sinr_em()
         elif _method == 1:
             return self.perform_kmeans()
         else:
-            return self.perform_hierarchical_clustering(max_fso_distance, min_n_degrees, n_dbs)
+            return self.perform_hierarchical_clustering(max_fso_distance, min_n_degrees, max_coverage_radius, n_dbs)
 
     def get_required_capacity_per_dbs(self):
         return np.array([_bs.n_associated_users * self.ue_required_rate for _bs in self.bs_rf_list])
@@ -147,17 +171,18 @@ class SimulationController:
 
     def set_ues_base_stations(self, exclude_mbs=True):
         self.bs_rf_list = [_bs.rf_transceiver for _bs in self.base_stations[NUM_MBS if exclude_mbs else 0:]]
-        all_freqs = [_bs.carrier_frequency for _bs in self.bs_rf_list]
-        available_freqs = set(all_freqs)
-        self.stations_list = []
-        for _freq in available_freqs:
-            bs_list = []
-            for idx, _freq_bs in enumerate(all_freqs):
-                if _freq_bs == _freq:
-                    bs_list.append(self.bs_rf_list[idx])
-            self.stations_list.append(bs_list)
-        for _user in self.users:
-            _user.rf_transceiver.set_available_base_stations(self.stations_list)
+        if not self.skip_rf_update:
+            all_freqs = [_bs.carrier_frequency for _bs in self.bs_rf_list]
+            available_freqs = set(all_freqs)
+            self.stations_list = []
+            for _freq in available_freqs:
+                bs_list = []
+                for idx, _freq_bs in enumerate(all_freqs):
+                    if _freq_bs == _freq:
+                        bs_list.append(self.bs_rf_list[idx])
+                self.stations_list.append(bs_list)
+            for _user in self.users:
+                _user.rf_transceiver.set_available_base_stations(self.stations_list)
 
     def link_stations_with_fso_star(self):
         for i in range(NUM_MBS, len(self.base_stations)):
@@ -267,15 +292,17 @@ class SimulationController:
         self.set_ues_base_stations()
         [_user.rf_transceiver.get_serving_bs_info(recalculate=True) for _user in self.users]
         # self.update_sinr_coverage_scores()
-        self.update_users_per_bs()
+        if not self.skip_rf_update:
+            self.update_users_per_bs()
         # self.init_users_rf_stats()
 
     def init_users_rf_stats(self):
         [_user.rf_transceiver.init_rf_stats() for _user in self.users]
 
     def update_users_rfs(self):
-        [_user.rf_transceiver.get_serving_bs_info(recalculate=True) for _user in self.users]
-        self.update_users_per_bs()
+        if not self.skip_rf_update:
+            [_user.rf_transceiver.get_serving_bs_info(recalculate=True) for _user in self.users]
+            self.update_users_per_bs()
 
     def get_users_sinrs(self):
         return np.array([_user.rf_transceiver.received_sinr for _user in self.users])
@@ -300,7 +327,7 @@ class SimulationController:
 
         return fig
 
-    def generate_plot(self, plot_ues=True):
+    def generate_plot(self, plot_ues=True, plot_fso=True):
         mpl.rc('font', family='Times New Roman', size=10)
         if plot_ues:
             fig, ax = self.users_model.generate_plot()
@@ -320,29 +347,31 @@ class SimulationController:
         ax.scatter(dbs_xs, dbs_ys, edgecolor='blue', facecolor=(0, 0, 1, 0), marker="P", s=50, label="DBS")
         ax.scatter(mbs_xs, mbs_ys, edgecolor='green', facecolor='black', alpha=1, marker="o", label="MBS")
 
-        #plot required rate per cluster
+        # plot required rate per cluster
         req_capacs = self.get_required_capacity_per_dbs()
         for idx_i, dbs_i in enumerate(self.base_stations):
             if idx_i >= NUM_MBS:
                 ax.text(dbs_i.coords.x - 250, dbs_i.coords.y + 200,
                         f'{req_capacs[idx_i - NUM_MBS] / 1e6:.0f}', fontproperties=font_property_normal, color='black')
-        legend_flag_1=0
-        for idx_i, dbs_i in enumerate(self.base_stations):
-            for idx_j, dbs_j in enumerate(self.base_stations):
-                if idx_i == idx_j or self.fso_links_capacs[idx_i, idx_j] < 1:
-                    continue
-                if dbs_i.coords.get_distance_to(dbs_j.coords) > MAX_FSO_DISTANCE:
-                    continue
-                if legend_flag_1==0:
-                    ax.plot([dbs_i.coords.x, dbs_j.coords.x], [dbs_i.coords.y, dbs_j.coords.y],
-                            color='black', linestyle='dotted', linewidth=0.5, alpha=0.5, label='Possible backhaul')
-                    legend_flag_1=1
-                else:
-                    ax.plot([dbs_i.coords.x, dbs_j.coords.x], [dbs_i.coords.y, dbs_j.coords.y],
-                            color='black', linestyle='dotted', linewidth=0.5, alpha=0.5)
+        legend_flag_1 = 0
+        if plot_fso:
+            for idx_i, dbs_i in enumerate(self.base_stations):
+                for idx_j, dbs_j in enumerate(self.base_stations):
+                    if idx_i == idx_j or self.fso_links_capacs[idx_i, idx_j] < 1:
+                        continue
+                    if dbs_i.coords.get_distance_to(dbs_j.coords) > MAX_FSO_DISTANCE:
+                        continue
+                    if legend_flag_1 == 0:
+                        ax.plot([dbs_i.coords.x, dbs_j.coords.x], [dbs_i.coords.y, dbs_j.coords.y],
+                                color='black', linestyle='dotted', linewidth=0.5, alpha=0.5, label='Possible backhaul')
+                        legend_flag_1 = 1
+                    else:
+                        ax.plot([dbs_i.coords.x, dbs_j.coords.x], [dbs_i.coords.y, dbs_j.coords.y],
+                                color='black', linestyle='dotted', linewidth=0.5, alpha=0.5)
 
-                ax.text(abs(dbs_i.coords.x + dbs_j.coords.x) / 2, abs(dbs_i.coords.y + dbs_j.coords.y) / 2,
-                        f'{self.fso_links_capacs[idx_i, idx_j]:.0f}', fontproperties=font_property_fso_capacs, color='dimgray')
+                    ax.text(abs(dbs_i.coords.x + dbs_j.coords.x) / 2, abs(dbs_i.coords.y + dbs_j.coords.y) / 2,
+                            f'{self.fso_links_capacs[idx_i, idx_j]:.0f}', fontproperties=font_property_fso_capacs,
+                            color='dimgray')
 
         fig.legend(loc="upper left", borderaxespad=1, ncol=2)
         return fig, ax

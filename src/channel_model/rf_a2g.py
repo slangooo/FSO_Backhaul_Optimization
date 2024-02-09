@@ -119,7 +119,10 @@ class PlosModel:
 
     @staticmethod
     def get_los_probability(height, distance_2d, a_param=PLOS_A_PARAM, b_param=PLOS_B_PARAM):
-        return 1 / (1 + a_param * np.exp(-b_param * (180 / np.pi * np.arctan(height / distance_2d) - a_param)))
+        if distance_2d ==0:
+            return 1
+        else:
+            return 1 / (1 + a_param * np.exp(-b_param * (180 / np.pi * np.arctan(height / distance_2d) - a_param)))
 
     @staticmethod
     def get_a_b_params(env_type='Urban', alpha=None, beta=None, gamma=None):

@@ -4,6 +4,7 @@
 from src.math_tools import db2lin, wh_to_joules, lin2db
 from src.types_constants import LinkType
 from src.data_structures import Coords3d
+
 from numpy import exp
 from numpy import log
 
@@ -23,7 +24,7 @@ MEAN_UES_PER_CLUSTER = 2 #Mean number of UEs in cluster
 MBS_HEIGHT = 25  # m
 MBS_LOCATIONS = [Coords3d(X_BOUNDARY[0], Y_BOUNDARY[0], MBS_HEIGHT), Coords3d(X_BOUNDARY[1], Y_BOUNDARY[1], MBS_HEIGHT)]
 
-NUM_UAVS = 20 #Number of DBSs. We can increase it if FSO capacities are insufficient, etc.
+NUM_UAVS = 500 #Number of DBSs. We can increase it if FSO capacities are insufficient, etc.
 
 REQUIRED_UE_RATE = 40e6 #Required Mbps per UE. It can be increased to make the problem harder,
                         # or decrease to relax constraint
@@ -38,9 +39,10 @@ MIN_N_DEGREES = 1
 
 RANDOMIZE_MBS_LOCS = True
 
+COVERAGE_RADIUS = 2000000
 ###########################################
 
-
+SKIP_UE_RF_UPDATE = True
 #Obstacles
 EXTEND_TIMES_FOUR = True
 
