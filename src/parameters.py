@@ -21,7 +21,11 @@ MEAN_UES_PER_CLUSTER = 5 #Mean number of UEs in cluster
 
 #Add MBS here below as needed
 MBS_HEIGHT = 25  # m
-MBS_LOCATIONS = [Coords3d(X_BOUNDARY[0], Y_BOUNDARY[0], MBS_HEIGHT), Coords3d(X_BOUNDARY[1], Y_BOUNDARY[1], MBS_HEIGHT)]
+MBS_LOCATIONS = [
+    Coords3d(X_BOUNDARY[0], Y_BOUNDARY[0], MBS_HEIGHT),
+    Coords3d(X_BOUNDARY[0], Y_BOUNDARY[1], MBS_HEIGHT),
+    Coords3d(X_BOUNDARY[1], Y_BOUNDARY[0], MBS_HEIGHT),
+    Coords3d(X_BOUNDARY[1], Y_BOUNDARY[1], MBS_HEIGHT)]
 
 NUM_UAVS = 30 #Number of DBSs. We can increase it if FSO capacities are insufficient, etc.
 
@@ -36,7 +40,7 @@ CLUSTERING_METHOD = 2 #0 for SINR-EM, and 1 for Kmeans, and 2 for hierarchical
 
 MIN_N_DEGREES = 1
 
-RANDOMIZE_MBS_LOCS = True
+RANDOMIZE_MBS_LOCS = False
 
 ###########################################
 
@@ -45,7 +49,7 @@ RANDOMIZE_MBS_LOCS = True
 EXTEND_TIMES_FOUR = True
 
 # Users Mobility Model
-NUM_OF_USERS = 140
+NUM_OF_USERS = 250
 USER_SPEED = [0.5, 0.8]
 PAUSE_INTERVAL = [0, 60]
 TIME_STEP = 2.5  # Between subsequent users mobility model updates
@@ -148,9 +152,35 @@ USER_MOBILITY_SAVE_NAME = 'extended_4_madrids_500_users'
 
 # Calculate solution for drone FSO connection in exact way, exponential time, only for small number of drones
 CALCULATE_EXACT_FSO_NET_SOLUTION = True
+# Limit calculation of exact solution to given time (seconds), 0 if not used
+CALCULATE_EXACT_FSO_NET_SOLUTION_TIME_LIMIT = 0
+# Limit calculation of exact solution to given number of instances, 0 if not used
+CALCULATE_EXACT_FSO_NET_SOLUTION_INSTANCE_LIMIT = 1000000
 # Limit calculation of exact solution to the first one, still exponential time
 CALCULATE_EXACT_FSO_NET_SOLUTION_FIRST_ONLY = False
+# Calculate solution for drone FSO connection by genetic algorithm
+RUN_GENECTIC_ALGORITHM = True
+# Limit calculation of genetic solution to the first one
+FSO_NET_GENECTIC_ALGORITHM_GENERATE_FIRST_ONLY = False
+# Mode of fitness function in Genetic Algorithm, one of:
+#    ENP : Edge Surplus Without Penalty            : fitness function based on edge surplus without penalty
+#    EVP : Edge Surplus with Value Penalty         : fitness function based on edge surplus with a penalty value
+#    EEP : Edge Surplus with Edge Deficits Penalty : fitness function based on edge surplus with a penalty corresponding to deficits on edge flows
+#    NNP : Node Surplus Without Penalty            : fitness function based on node surplus without penalty
+#    NVP : Node Surplus with Value Penalty         : fitness function based on node surplus with a penalty value
+#    NEP : Node Surplus with Edge Deficits Penalty : fitness function based on node surplus with a penalty corresponding to deficits on edge flows
+GENECTIC_ALGORITHM_FITNESS_MODE = 'NVP'
+# Total number of individual solutions present in the population
+GENECTIC_ALGORITHM_POPULATION_SIZE = 1000
 # Time limit in seconds for genetic algorithm searching solution for FSO net
-FSO_NET_GENECTIC_ALGORITHM_TIME_LIMIT = 10
+FSO_NET_GENECTIC_ALGORITHM_TIME_LIMIT = 0
+# Generations limit for genetic algorithm searching solution for FSO net
+FSO_NET_GENECTIC_ALGORITHM_GENERATION_LIMIT = 300
 # For true store extra information about MHP runs
-SAVE_MHP_DATA = False
+SAVE_MHP_DATA = True
+# For true store figures for area and network
+SAVE_FIG = True
+# For true store instance of drone network
+SAVE_INSTANCE = True
+# If set to any int != 0 the max_fso_distance is calculated to value that produce graph with average vertex degree equal to this value
+RADIUS_BY_DESIRED_VERTEX_DEGREE = 0
