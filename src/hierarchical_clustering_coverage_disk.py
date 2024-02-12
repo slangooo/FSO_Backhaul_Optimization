@@ -121,8 +121,8 @@ def perform_dbs_hc(users, mbs_locs, distance_threshold=MAX_FSO_DISTANCE, min_n_d
     clusters_lock = np.reshape(~dist_flags_square[unsatisfied_idxs].sum(0).astype(bool), ues_mbs_locs.shape[0])
     clusters_lock[unsatisfied_idxs] = False
 
-    mbs_dists = np.vstack((np.array([euclidean(_ue_loc, mbs_locs[0]) for _ue_loc in ues_locs]),
-                           np.array([euclidean(_ue_loc, mbs_locs[1]) for _ue_loc in ues_locs]))).T
+    mbs_dists_arrays = [np.array([euclidean(_ue_loc, mbs_locs[i]) for _ue_loc in ues_locs]) for i in range(len(mbs_locs))]
+    mbs_dists = np.vstack(tuple(mbs_dists_arrays)).T
     old_mbs_dists = mbs_dists[0].copy()
     linkage_matrix = np.empty((n_ues - 1, 4), dtype=float)
     cardinalities = np.ones(n_ues, dtype=int)
