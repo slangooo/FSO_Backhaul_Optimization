@@ -9,14 +9,14 @@ from src.mhp.GenAlg import GenAlg
 from src.run_info import Info
 from src.mhp.GenAlg import FitnessMode
 
-
 from src.parameters import CALCULATE_EXACT_FSO_NET_SOLUTION, CALCULATE_EXACT_FSO_NET_SOLUTION_FIRST_ONLY, \
     FSO_NET_GENECTIC_ALGORITHM_TIME_LIMIT, \
     TX_POWER_FSO_DRONE, NUM_UAVS, MEAN_UES_PER_CLUSTER, MAX_FSO_DISTANCE, REQUIRED_UE_RATE, SAVE_MHP_DATA, \
     CLUSTERING_METHOD, MIN_N_DEGREES, \
-    X_BOUNDARY, Y_BOUNDARY, RANDOMIZE_MBS_LOCS, COVERAGE_RADIUS, FSO_NET_GENECTIC_ALGORITHM_GENERATION_LIMIT,\
-FSO_NET_GENECTIC_ALGORITHM_GENERATE_FIRST_ONLY,GENECTIC_ALGORITHM_POPULATION_SIZE, CALCULATE_EXACT_FSO_NET_SOLUTION_TIME_LIMIT,\
-CALCULATE_EXACT_FSO_NET_SOLUTION_INSTANCE_LIMIT
+    X_BOUNDARY, Y_BOUNDARY, RANDOMIZE_MBS_LOCS, COVERAGE_RADIUS, FSO_NET_GENECTIC_ALGORITHM_GENERATION_LIMIT, \
+    FSO_NET_GENECTIC_ALGORITHM_GENERATE_FIRST_ONLY, GENECTIC_ALGORITHM_POPULATION_SIZE, \
+    CALCULATE_EXACT_FSO_NET_SOLUTION_TIME_LIMIT, \
+    CALCULATE_EXACT_FSO_NET_SOLUTION_INSTANCE_LIMIT
 import numpy as np
 import random
 from multiprocessing import Pool
@@ -29,7 +29,8 @@ from datetime import datetime
 from tqdm import tqdm
 
 USE_MULTIPROCESSING = True
-results_folder = os.path.join(os.getcwd(), "results\\new\\")
+results_folder = os.path.join(os.getcwd(), "jsac\\")
+
 
 class Simulator(SimulationController):
     def __init__(self):
@@ -102,116 +103,47 @@ def perform_simulation_run_main(test_iteration, n_drones, ue_rate=20, max_fso_di
     return res
 
 
-def run_clustering_nb(min_n_degrees, max_fso_distance, max_coverage_radius=COVERAGE_RADIUS):
-    n_iterations = 10
+def run_clustering_nb(min_n_degrees, max_fso_distance, max_coverage_radius):
     sim = Simulator()
-    min_n_clusters = 0
-    for i in range(1, n_iterations):
-        sim.randomize_mbs_locs()
-        sim.reset_users_model()
-        min_n_clusters += (min_n_clusters + sim.localize_drones(max_fso_distance=max_fso_distance,
-                                                                min_n_degrees=min_n_degrees,
-                                                                max_coverage_radius=max_coverage_radius) - min_n_clusters) / i
-    print("Done!!")
-    return min_n_clusters
+    sim.randomize_mbs_locs()
+    sim.reset_users_model()
+    results = np.zeros_like(np.meshgrid(min_n_degrees, max_fso_distance, max_coverage_radius, indexing='ij')[0])
+    for deg_idx, _n_degrees in enumerate(min_n_degrees):
+        for fso_idx, _max_fso_distance in enumerate(max_fso_distance):
+            for cov_idx, _max_coverage_radius in enumerate(max_coverage_radius):
+                results[deg_idx, fso_idx, cov_idx] = sim.localize_drones(max_fso_distance=_max_fso_distance,
+                                                                         min_n_degrees=_n_degrees,
+                                                                         max_coverage_radius=_max_coverage_radius)
+
+    return results
 
 
 def sim_1_ndbs_fso_M():
+    n_parallel_processes = 5
+    n_iterations = n_parallel_processes * 4
     min_n_degrees = [1, 2, 3, 4]
     max_fso_distance = [1e3, 2e3, 3e3, 4e3, 5e3]
-    max_coverage_radius = [500, 1000, 1500, 2000, 2500, 3000]
-    inputs = list(itertools.product(min_n_degrees, max_fso_distance, max_coverage_radius))
-    with Pool(5, maxtasksperchild=4) as pool:
-        results = pool.starmap(run_clustering_nb, tqdm(inputs, total=len(inputs)))
-    reshaped_results = np.array(results).reshape(len(min_n_degrees), len(max_fso_distance), len(max_coverage_radius))
-    return reshaped_results
+    max_coverage_radius = [2000, 3000, 4000]
+    results = np.zeros_like(np.meshgrid(min_n_degrees, max_fso_distance, max_coverage_radius, indexing='ij')[0])
+    args = [(min_n_degrees, max_fso_distance, max_coverage_radius) for _ in range(n_parallel_processes)]
+    with Pool(n_parallel_processes, maxtasksperchild=2) as pool:
+        for _iter in tqdm(range(1, int(n_iterations / n_parallel_processes) + 1)):
+            iter_results = pool.starmap(run_clustering_nb, args)
+            results = results + (np.array(iter_results).mean(axis=0) - results) / _iter
+    return results
 
 
-sim = Simulator()
-
-
-def run_iter(max_fso_distance, min_nb_degrees):
-    sim.randomize_mbs_locs()
-    sim.reset_users_model()
-    n_drones = sim.localize_drones(_method=2, max_fso_distance=max_fso_distance, min_n_degrees=min_nb_degrees,
-                                   max_coverage_radius=200000)
-
-    sim.set_drones_number(n_drones)
-
-    sim.get_fso_capacities(max_fso_distance)
-    mbs_list = sim.base_stations[:NUM_MBS]
-    dbs_list = sim.base_stations[NUM_MBS:]
-    dn = DroneNet.createArea(mbs_list, dbs_list, sim.get_required_capacity_per_dbs(),
-                             sim.fso_links_capacs)
-    ga = GenAlg(timeLimit=FSO_NET_GENECTIC_ALGORITHM_TIME_LIMIT)
-
-    for i in range(3):
-        try:
-            gaSolution = ga.run(dn)
-            if gaSolution:
-                score_ga_hc = gaSolution.score
-                break
-        except:
-            score_ga_hc = None
-
-
-    sim.localize_drones(_method=1, max_fso_distance=max_fso_distance, min_n_degrees=min_nb_degrees,
-                        max_coverage_radius=200000)
-    sim.get_fso_capacities(max_fso_distance)
-    mbs_list = sim.base_stations[:NUM_MBS]
-    dbs_list = sim.base_stations[NUM_MBS:]
-    dn = DroneNet.createArea(mbs_list, dbs_list, sim.get_required_capacity_per_dbs(),
-                             sim.fso_links_capacs)
-    ga = GenAlg(timeLimit=FSO_NET_GENECTIC_ALGORITHM_TIME_LIMIT)
-    for i in range(3):
-        try:
-            gaSolution = ga.run(dn)
-            if gaSolution:
-                score_ga_km = gaSolution.score
-                break
-        except:
-            score_ga_km = None
-    return n_drones, score_ga_hc, score_ga_km
-
-
-def sim_2_ga_vs_kmeans_hc():
-    max_fso_distance = [1e3, 2e3, 3e3, 4e3]
-    min_n_degrees = [1, 2, 3, 4]
-    n_iterations = 100
-    inputs = list(itertools.product(min_n_degrees, max_fso_distance))
-    repeated_inputs = [(x, y) for (x, y) in inputs for _ in range(n_iterations)]
-    # with Pool(5, maxtasksperchild=2) as pool:
-    #     results = pool.starmap(run_iter, tqdm(repeated_inputs, total=len(repeated_inputs)))
-    res = np.zeros((n_iterations, len(min_n_degrees), len(max_fso_distance), 3))
-
-    for fso_idx, fso_dist in tqdm(enumerate(max_fso_distance)):
-        for n_degree_idx, n_deg in tqdm(enumerate(min_n_degrees)):
-            for _iter in tqdm(range(n_iterations)):
-                res[_iter, n_degree_idx, fso_idx, :] = np.array(run_iter(fso_dist, n_deg))
-
-    return res
-
-
-if __name__ == '__main__':
-    # results_1 = sim_1_ndbs_fso_M()
-    # results_2 = sim_2_ga_vs_kmeans_hc()
-    GENECTIC_ALGORITHM_FITNESS_MODE = 'NVP'
-    sim = Simulator()
-    sim.reset_users_model()
-    min_n_clusters = sim.localize_drones(max_fso_distance=3000, min_n_degrees=5,
-                                         max_coverage_radius=200000, n_dbs=50)
-    sim.set_drones_number(min_n_clusters)
+def run_ga(sim, fitness_mode):
     sim.get_fso_capacities()
     mbs_list = sim.base_stations[:NUM_MBS]
     dbs_list = sim.base_stations[NUM_MBS:]
     dn = DroneNet.createArea(mbs_list, dbs_list, sim.get_required_capacity_per_dbs(), sim.fso_links_capacs)
-    info = Info(1, clustering_method=2, n_drones=min_n_clusters, ue_rate=REQUIRED_UE_RATE, max_fso_distance=3000, fso_transmit_power=TX_POWER_FSO_DRONE, em_n_iters=0,
-                dn=dn, mbs_list=mbs_list, dbs_list=dbs_list, fitness_mode=GENECTIC_ALGORITHM_FITNESS_MODE)
-    fitnessMode = FitnessMode(mode=GENECTIC_ALGORITHM_FITNESS_MODE, penalty_value=dn.drone_number * dn.max_bases_bandwidth())
-    exactSolution = dn.lookForChainSolution(
-        time_limit_s=CALCULATE_EXACT_FSO_NET_SOLUTION_TIME_LIMIT,
-        instance_limit=CALCULATE_EXACT_FSO_NET_SOLUTION_INSTANCE_LIMIT,
-        stop_on_first=CALCULATE_EXACT_FSO_NET_SOLUTION_FIRST_ONLY)
+    fitnessMode = FitnessMode(mode=fitness_mode,
+                              penalty_value=dn.drone_number * dn.max_bases_bandwidth())
+    # exactSolution = dn.lookForChainSolution(
+    #     time_limit_s=CALCULATE_EXACT_FSO_NET_SOLUTION_TIME_LIMIT,
+    #     instance_limit=CALCULATE_EXACT_FSO_NET_SOLUTION_INSTANCE_LIMIT,
+    #     stop_on_first=CALCULATE_EXACT_FSO_NET_SOLUTION_FIRST_ONLY)
     ga = GenAlg(
         time_limit_s=FSO_NET_GENECTIC_ALGORITHM_TIME_LIMIT,
         num_generations=FSO_NET_GENECTIC_ALGORITHM_GENERATION_LIMIT,
@@ -229,17 +161,67 @@ if __name__ == '__main__':
         keep_elitism=int(0.1 * GENECTIC_ALGORITHM_POPULATION_SIZE),
         mutation_probability_norm=0.2,
         saturate_stop=30,
-        fitness_draw= None
+        fitness_draw=None
     )
     gaSolution = ga.run(dn)
+    return gaSolution
 
-    # sim = Simulator()
-    # if RANDOMIZE_MBS_LOCS:
-    #     sim.randomize_mbs_locs()
-    # sim.reset_users_model()
-    # min_n_clusters = sim.localize_drones(max_fso_distance=3000, min_n_degrees=2,
-    #                                      n_dbs=NUM_UAVS, max_coverage_radius=800)
-    # sim.set_drones_number(min_n_clusters)
-    # sim.get_fso_capacities()
-    # fig, _ = sim.generate_plot(plot_fso=False)
-    # fig.show()
+
+def run_iter(min_n_degrees, max_fso_distance, max_coverage_radius, fitness_method):
+    sim = Simulator()
+    sim.randomize_mbs_locs()
+    sim.reset_users_model()
+    results_hc = np.zeros_like(np.meshgrid(min_n_degrees, max_fso_distance, max_coverage_radius, indexing='ij')[0])
+    results_km = np.zeros_like(np.meshgrid(min_n_degrees, max_fso_distance, max_coverage_radius, indexing='ij')[0])
+    results_n_drones = np.zeros_like(
+        np.meshgrid(min_n_degrees, max_fso_distance, max_coverage_radius, indexing='ij')[0])
+    for deg_idx, _n_degrees in enumerate(min_n_degrees):
+        for fso_idx, _max_fso_distance in enumerate(max_fso_distance):
+            for cov_idx, _max_coverage_radius in enumerate(max_coverage_radius):
+                n_drones = sim.localize_drones(_method=2, max_fso_distance=_max_fso_distance,
+                                               min_n_degrees=_n_degrees,
+                                               max_coverage_radius=_max_coverage_radius)
+                sim.set_drones_number(n_drones)
+
+                gaSolution = run_ga(sim, fitness_method)
+                results_hc[deg_idx, fso_idx, cov_idx] = gaSolution.score
+
+                sim.localize_drones(_method=1, max_fso_distance=_max_fso_distance,
+                                    min_n_degrees=_n_degrees,
+                                    max_coverage_radius=_max_coverage_radius, n_dbs=n_drones)
+
+                gaSolution = run_ga(sim, fitness_method)
+                results_km[deg_idx, fso_idx, cov_idx] = gaSolution.score
+                results_n_drones[deg_idx, fso_idx, cov_idx] = n_drones
+
+    return results_n_drones, results_hc, results_km
+
+
+def sim_2_ga_vs_kmeans_hc(fitness_method):
+    n_parallel_processes = 5
+    n_iterations = n_parallel_processes * 5
+    min_n_degrees = [1, 2, 3, 4]
+    max_fso_distance = [2e3, 3e3, 4e3]
+    max_coverage_radius = [2000, 3000, 4000]
+    results_hc = np.zeros_like(np.meshgrid(min_n_degrees, max_fso_distance, max_coverage_radius, indexing='ij')[0])
+    results_km = np.zeros_like(np.meshgrid(min_n_degrees, max_fso_distance, max_coverage_radius, indexing='ij')[0])
+    results_n_drones = np.zeros_like(
+        np.meshgrid(min_n_degrees, max_fso_distance, max_coverage_radius, indexing='ij')[0])
+
+
+    args = [(min_n_degrees, max_fso_distance, max_coverage_radius, fitness_method) for _ in range(n_parallel_processes)]
+    with Pool(n_parallel_processes, maxtasksperchild=2) as pool:
+        for _iter in tqdm(range(1, int(n_iterations / n_parallel_processes) + 1)):
+            iter_res = np.array(pool.starmap(run_iter, args)).mean(axis=0)
+            results_n_drones = results_n_drones + (iter_res[0] - results_n_drones)/ _iter
+            results_hc = results_hc + (iter_res[1] - results_hc)/ _iter
+            results_km = results_km + (iter_res[2] - results_km)/ _iter
+
+    return results_n_drones, results_hc, results_km
+
+
+if __name__ == '__main__':
+    # results_1 = sim_1_ndbs_fso_M()
+    # np.savez(results_folder + 'results_1_1.npz', results_1)
+    results_2 = sim_2_ga_vs_kmeans_hc('NVP')
+    np.savez(results_folder + 'results_2_1.npz', results_2)

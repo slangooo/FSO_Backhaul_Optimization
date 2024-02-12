@@ -122,8 +122,8 @@ class SimulationController:
             min_n_degrees, max_coverage_radius)
         # if true_n_clusters_poss != n_clusters_possible:
         #     print("::",n_clusters_possible, true_n_clusters_poss)
-        if n_dbs > len(linkage_matrix):
-            print("Number of DBS is higher than the number of GNs!!")
+        # if n_dbs > len(linkage_matrix):
+        #     print("Number of DBS is higher than the number of GNs!!")
         n_dbs_set = min(n_clusters_possible if set_n_dbs_min else n_dbs, len(linkage_matrix) - 1)
         self.set_drones_number(n_dbs_set)
         locs = get_centroids(n_dbs_set, linkage_matrix, self.get_ues_locs())
