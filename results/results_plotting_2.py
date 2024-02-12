@@ -37,7 +37,7 @@ if __name__ == '__main__':
         for _cov_radius in range(3, res_1.shape[2], 2):
             n_drones_axs.plot(max_fso_distance, res_1[_n_deg, :, _cov_radius], color=_colors[_n_deg],
                               ls=_linestyles[_n_deg], marker=_markers[_cov_radius // 2 - 1], lw=1,
-            label='$N_{\mathrm{B}}$=' + f'{min_n_degrees[_n_deg]}' +
+            label='$N_{\mathrm{B}}$=' + f'{min_n_degrees[_n_deg]},  ' +
                   '$R_{\mathrm{A}}$=' + f'{int(max_coverage_radius[_cov_radius] / 1e3)} Km')
 
     # for _fso_d in range(res_1.shape[1]):
@@ -51,7 +51,7 @@ if __name__ == '__main__':
     total_handles = []
     total_labels = []
     handles, labels = n_drones_axs.get_legend_handles_labels()
-    n_drones_fig.legend(handles, labels, loc=(0.43, 0.67), ncol=2)
+    n_drones_fig.legend(handles, labels, loc=(0.4, 0.67), ncol=2)
     # n_drones_axs.set_yscale('log')
 
     # color_legend = [lines.Line2D([0], [0], color=_colors[_n_deg], ls=_linestyles[_n_deg],
