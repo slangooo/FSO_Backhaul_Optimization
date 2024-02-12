@@ -1,6 +1,7 @@
 #  Copyright (c) 2023. Salim Janji.
 #   All rights reserved.
 import itertools
+import traceback
 
 from src.main_controller import SimulationController
 from src.parameters import NUM_MBS
@@ -8,7 +9,7 @@ from src.mhp.DroneNet import DroneNet
 from src.mhp.GenAlg import GenAlg
 from src.run_info import Info
 from src.mhp.GenAlg import FitnessMode
-
+import traceback
 from src.parameters import CALCULATE_EXACT_FSO_NET_SOLUTION, CALCULATE_EXACT_FSO_NET_SOLUTION_FIRST_ONLY, \
     FSO_NET_GENECTIC_ALGORITHM_TIME_LIMIT, \
     TX_POWER_FSO_DRONE, NUM_UAVS, MEAN_UES_PER_CLUSTER, MAX_FSO_DISTANCE, REQUIRED_UE_RATE, SAVE_MHP_DATA, \
@@ -120,10 +121,10 @@ def run_clustering_nb(min_n_degrees, max_fso_distance, max_coverage_radius):
 
 def sim_1_ndbs_fso_M():
     n_parallel_processes = 5
-    n_iterations = n_parallel_processes * 4
+    n_iterations = n_parallel_processes * 2000
     min_n_degrees = [1, 2, 3, 4]
-    max_fso_distance = [1e3, 2e3, 3e3, 4e3, 5e3]
-    max_coverage_radius = [2000, 3000, 4000]
+    max_fso_distance = [500, 1e3, 2e3, 3e3, 4e3]
+    max_coverage_radius = [2000, 3000]
     results = np.zeros_like(np.meshgrid(min_n_degrees, max_fso_distance, max_coverage_radius, indexing='ij')[0])
     args = [(min_n_degrees, max_fso_distance, max_coverage_radius) for _ in range(n_parallel_processes)]
     with Pool(n_parallel_processes, maxtasksperchild=2) as pool:
@@ -178,21 +179,32 @@ def run_iter(min_n_degrees, max_fso_distance, max_coverage_radius, fitness_metho
     for deg_idx, _n_degrees in enumerate(min_n_degrees):
         for fso_idx, _max_fso_distance in enumerate(max_fso_distance):
             for cov_idx, _max_coverage_radius in enumerate(max_coverage_radius):
-                n_drones = sim.localize_drones(_method=2, max_fso_distance=_max_fso_distance,
-                                               min_n_degrees=_n_degrees,
-                                               max_coverage_radius=_max_coverage_radius)
-                sim.set_drones_number(n_drones)
+                not_run = True
+                while not_run:
+                    try:
+                        n_drones = sim.localize_drones(_method=2, max_fso_distance=_max_fso_distance,
+                                                       min_n_degrees=_n_degrees,
+                                                       max_coverage_radius=_max_coverage_radius, set_n_dbs_min=True)
 
-                gaSolution = run_ga(sim, fitness_method)
-                results_hc[deg_idx, fso_idx, cov_idx] = gaSolution.score
+                        gaSolution = run_ga(sim, fitness_method)
+                        results_hc[deg_idx, fso_idx, cov_idx] = gaSolution.score
 
-                sim.localize_drones(_method=1, max_fso_distance=_max_fso_distance,
-                                    min_n_degrees=_n_degrees,
-                                    max_coverage_radius=_max_coverage_radius, n_dbs=n_drones)
+                        sim.localize_drones(_method=1, max_fso_distance=_max_fso_distance,
+                                            min_n_degrees=_n_degrees,
+                                            max_coverage_radius=_max_coverage_radius, n_dbs=n_drones)
 
-                gaSolution = run_ga(sim, fitness_method)
-                results_km[deg_idx, fso_idx, cov_idx] = gaSolution.score
-                results_n_drones[deg_idx, fso_idx, cov_idx] = n_drones
+                        gaSolution = run_ga(sim, fitness_method)
+                        results_km[deg_idx, fso_idx, cov_idx] = gaSolution.score
+                        results_n_drones[deg_idx, fso_idx, cov_idx] = n_drones
+                        not_run = False
+                    except Exception as e:
+                        print("Error!  ", n_drones)
+                        traceback.print_exc()
+                        sim.localize_drones(_method=2, max_fso_distance=_max_fso_distance,
+                                            min_n_degrees=_n_degrees,
+                                            max_coverage_radius=_max_coverage_radius)
+
+
 
     return results_n_drones, results_hc, results_km
 
@@ -201,8 +213,8 @@ def sim_2_ga_vs_kmeans_hc(fitness_method):
     n_parallel_processes = 5
     n_iterations = n_parallel_processes * 5
     min_n_degrees = [1, 2, 3, 4]
-    max_fso_distance = [2e3, 3e3, 4e3]
-    max_coverage_radius = [2000, 3000, 4000]
+    max_fso_distance = [1e3, 2e3, 3e3, 4e3]
+    max_coverage_radius = [5000000]
     results_hc = np.zeros_like(np.meshgrid(min_n_degrees, max_fso_distance, max_coverage_radius, indexing='ij')[0])
     results_km = np.zeros_like(np.meshgrid(min_n_degrees, max_fso_distance, max_coverage_radius, indexing='ij')[0])
     results_n_drones = np.zeros_like(
@@ -210,6 +222,7 @@ def sim_2_ga_vs_kmeans_hc(fitness_method):
 
 
     args = [(min_n_degrees, max_fso_distance, max_coverage_radius, fitness_method) for _ in range(n_parallel_processes)]
+    # run_iter(*(args[0]))
     with Pool(n_parallel_processes, maxtasksperchild=2) as pool:
         for _iter in tqdm(range(1, int(n_iterations / n_parallel_processes) + 1)):
             iter_res = np.array(pool.starmap(run_iter, args)).mean(axis=0)
@@ -222,6 +235,6 @@ def sim_2_ga_vs_kmeans_hc(fitness_method):
 
 if __name__ == '__main__':
     # results_1 = sim_1_ndbs_fso_M()
-    # np.savez(results_folder + 'results_1_1.npz', results_1)
+    # np.savez(results_folder + 'results_1_3.npz', results_1)
     results_2 = sim_2_ga_vs_kmeans_hc('NVP')
-    np.savez(results_folder + 'results_2_1.npz', results_2)
+    np.savez(results_folder + 'results_2_2.npz', results_2)

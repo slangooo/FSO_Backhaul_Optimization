@@ -365,8 +365,10 @@ def get_clustering(linkage_matrix, n_clusters):
         idx_1, idx_2 = int(linkage_matrix[idx, 0]), int(linkage_matrix[idx, 1])
         clusters.append(idx_1)
         clusters.append(idx_2)
-
-    return [flatten_cluster_from_tree(_tree[1][_cluster_idx]) for _cluster_idx in clusters]
+    a = [flatten_cluster_from_tree(_tree[1][_cluster_idx]) for _cluster_idx in clusters]
+    if n_clusters == 1:
+        return [[item for sublist in a for item in sublist]]
+    return a
 
 
 def get_centroids(n_clusters, linkage_matrix, ues_locs):
@@ -383,7 +385,6 @@ def get_centroids(n_clusters, linkage_matrix, ues_locs):
         centroids[i, :] = ues_locs[np.argwhere(aa == i)].mean(0)
         dists = pdist(ues_locs[np.argwhere(aa == i)].reshape(-1, 2))
         radiuses[i] = max(dists) if dists.any() else 0
-
     return centroids
 
 

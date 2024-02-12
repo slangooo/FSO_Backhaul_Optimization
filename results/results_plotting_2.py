@@ -28,15 +28,20 @@ _colors = list(mcolors.BASE_COLORS.keys())
 mpl.rc('font', family='Times New Roman')
 
 if __name__ == '__main__':
+    #res_1_1
+    # min_n_degrees = [1, 2, 3, 4]
+    # max_fso_distance = [1e3, 2e3, 3e3, 4e3, 5e3]
+    # max_coverage_radius = [500, 1000, 1500, 2000, 2500, 3000]
+    #res_1_2
     min_n_degrees = [1, 2, 3, 4]
-    max_fso_distance = [1e3, 2e3, 3e3, 4e3, 5e3]
-    max_coverage_radius = [500, 1000, 1500, 2000, 2500, 3000]
-    res_1 = list(np.load(results_folder + 'results_1_1.npz').values())[0]
+    max_fso_distance = [1e3, 2e3, 3e3, 4e3]
+    max_coverage_radius = [2000, 3000]#, 4000]
+    res_1 = list(np.load(results_folder + 'results_1_2.npz').values())[0]
     n_drones_fig, n_drones_axs = plt.subplots()
     for _n_deg in range(res_1.shape[0]):
-        for _cov_radius in range(3, res_1.shape[2], 2):
+        for _cov_radius in range(res_1.shape[2]-1):
             n_drones_axs.plot(max_fso_distance, res_1[_n_deg, :, _cov_radius], color=_colors[_n_deg], markersize=4,
-                              ls=_linestyles[_cov_radius // 2], marker=_markers[_cov_radius // 2 - 1], lw=1.8,
+                              ls=_linestyles[_cov_radius], marker=_markers[_cov_radius], lw=1.8,
             label='$N_{\mathrm{B}}$=' + f'{min_n_degrees[_n_deg]},  ' +
                   '$R_{\mathrm{A}}$=' + f'{int(max_coverage_radius[_cov_radius] / 1e3)} Km')
 
@@ -70,4 +75,4 @@ if __name__ == '__main__':
     n_drones_axs.set_ylabel('Required number of DBSs $M$', fontsize=10)
     n_drones_axs.grid(True)
     n_drones_fig.show()
-    n_drones_fig.savefig(results_folder + f'n_drones.eps', format='eps')
+    n_drones_fig.savefig(results_folder + f'n_drones_1.eps', format='eps')

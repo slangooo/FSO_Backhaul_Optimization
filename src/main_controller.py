@@ -120,6 +120,10 @@ class SimulationController:
         linkage_matrix, n_clusters_possible, true_n_clusters_poss = perform_dbs_hc(
             self.users, [_bs.coords.as_2d_array() for _bs in self.base_stations[:NUM_MBS]], max_fso_distance,
             min_n_degrees, max_coverage_radius)
+        if not n_clusters_possible:
+            n_clusters_possible = 1
+            true_n_clusters_poss = 1
+
         # if true_n_clusters_poss != n_clusters_possible:
         #     print("::",n_clusters_possible, true_n_clusters_poss)
         # if n_dbs > len(linkage_matrix):
@@ -137,14 +141,14 @@ class SimulationController:
         return n_clusters_possible
 
     def localize_drones(self, _method=CLUSTERING_METHOD, max_fso_distance=MAX_FSO_DISTANCE, min_n_degrees=MIN_N_DEGREES,
-                        max_coverage_radius=COVERAGE_RADIUS, n_dbs=NUM_UAVS):
+                        max_coverage_radius=COVERAGE_RADIUS, n_dbs=NUM_UAVS, set_n_dbs_min=False):
         self.set_drones_number(n_dbs)
         if _method == 0:
             return self.perform_sinr_em()
         elif _method == 1:
             return self.perform_kmeans()
         else:
-            return self.perform_hierarchical_clustering(max_fso_distance, min_n_degrees, max_coverage_radius, n_dbs)
+            return self.perform_hierarchical_clustering(max_fso_distance, min_n_degrees, max_coverage_radius, n_dbs, set_n_dbs_min)
 
     def get_required_capacity_per_dbs(self):
         return np.array([_bs.n_associated_users * self.ue_required_rate for _bs in self.bs_rf_list])
