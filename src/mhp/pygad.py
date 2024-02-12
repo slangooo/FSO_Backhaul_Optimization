@@ -16,6 +16,7 @@ class GA:
                  num_generations, 
                  num_parents_mating, 
                  fitness_func,
+                 solution_func=None,
                  initial_population=None,
                  sol_per_pop=None, 
                  num_genes=None,
@@ -60,6 +61,8 @@ class GA:
         num_parents_mating: Number of solutions to be selected as parents in the mating pool.
 
         fitness_func: Accepts a function that must accept 2 parameters (a single solution and its index in the population) and return the fitness value of the solution. Available starting from PyGAD 1.0.17 until 1.0.20 with a single parameter representing the solution. Changed in PyGAD 2.0.0 and higher to include the second parameter representing the solution index.
+        
+        solution_func: Same as fitness_func but used only for collect best solutions, others than used for population selection. Not implemented in parallel mode
 
         initial_population: A user-defined initial population. It is useful when the user wants to start the generations with a custom initial population. It defaults to None which means no initial population is specified by the user. In this case, PyGAD creates an initial population using the 'sol_per_pop' and 'num_genes' parameters. An exception is raised if the 'initial_population' is None while any of the 2 parameters ('sol_per_pop' or 'num_genes') is also None.
         sol_per_pop: Number of solutions in the population. 
@@ -77,10 +80,10 @@ class GA:
 
         keep_elitism: Added in PyGAD 2.18.0. It can take the value 0 or a positive integer that satisfies (0 <= keep_elitism <= sol_per_pop). It defaults to 1 which means only the best solution in the current generation is kept in the next generation. If assigned 0, this means it has no effect. If assigned a positive integer K, then the best K solutions are kept in the next generation. It cannot be assigned a value greater than the value assigned to the sol_per_pop parameter. If this parameter has a value different than 0, then the keep_parents parameter will have no effect.
 
-        crossover_type: Type of the crossover opreator. If  crossover_type=None, then the crossover step is bypassed which means no crossover is applied and thus no offspring will be created in the next generations. The next generation will use the solutions in the current population.
+        crossover_type: Type of the crossover operator. If  crossover_type=None, then the crossover step is bypassed which means no crossover is applied and thus no offspring will be created in the next generations. The next generation will use the solutions in the current population.
         crossover_probability: The probability of selecting a solution for the crossover operation. If the solution probability is <= crossover_probability, the solution is selected. The value must be between 0 and 1 inclusive.
 
-        mutation_type: Type of the mutation opreator. If mutation_type=None, then the mutation step is bypassed which means no mutation is applied and thus no changes are applied to the offspring created using the crossover operation. The offspring will be used unchanged in the next generation.
+        mutation_type: Type of the mutation operator. If mutation_type=None, then the mutation step is bypassed which means no mutation is applied and thus no changes are applied to the offspring created using the crossover operation. The offspring will be used unchanged in the next generation.
         mutation_probability: The probability of selecting a gene for the mutation operation. If the gene probability is <= mutation_probability, the gene is selected. It accepts either a single value for fixed mutation or a list/tuple/numpy.ndarray of 2 values for adaptive mutation. The values must be between 0 and 1 inclusive. If specified, then no need for the 2 parameters mutation_percent_genes and mutation_num_genes.
 
         mutation_by_replacement: An optional bool parameter. It works only when the selected type of mutation is random (mutation_type="random"). In this case, setting mutation_by_replacement=True means replace the gene by the randomly generated value. If False, then it has no effect and random mutation works by adding the random value to the gene.
@@ -124,7 +127,7 @@ class GA:
             numpy.random.seed(self.random_seed)
             random.seed(self.random_seed)
 
-        # If suppress_warnings is bool and its valud is False, then print warning messages.
+        # If suppress_warnings is bool and its value is False, then print warning messages.
         if type(suppress_warnings) is bool:
             self.suppress_warnings = suppress_warnings
         else:
@@ -304,7 +307,7 @@ class GA:
                 raise TypeError("The expected type of both the sol_per_pop and num_genes parameters is int but ({sol_per_pop_type}) and {num_genes_type} found.".format(sol_per_pop_type=type(sol_per_pop), num_genes_type=type(num_genes)))
         elif numpy.array(initial_population).ndim != 2:
             self.valid_parameters = False
-            raise ValueError("A 2D list is expected to the initail_population parameter but a ({initial_population_ndim}-D) list found.".format(initial_population_ndim=numpy.array(initial_population).ndim))
+            raise ValueError("A 2D list is expected to the initial_population parameter but a ({initial_population_ndim}-D) list found.".format(initial_population_ndim=numpy.array(initial_population).ndim))
         else:
             # Forcing the initial_population array to have the data type assigned to the gene_type parameter.
             if self.gene_type_single == True:
@@ -356,7 +359,7 @@ class GA:
         if (crossover_type is None):
             self.crossover = None
         elif callable(crossover_type):
-            # Check if the crossover_type is a function that accepts 2 paramaters.
+            # Check if the crossover_type is a function that accepts 2 parameters.
             if (crossover_type.__code__.co_argcount == 3):
                 # The crossover function assigned to the crossover_type parameter is validated.
                 self.crossover = crossover_type
@@ -401,7 +404,7 @@ class GA:
         if mutation_type is None:
             self.mutation = None
         elif callable(mutation_type):
-            # Check if the mutation_type is a function that accepts 1 paramater.
+            # Check if the mutation_type is a function that accepts 1 parameter.
             if (mutation_type.__code__.co_argcount == 2):
                 # The mutation function assigned to the mutation_type parameter is validated.
                 self.mutation = mutation_type
@@ -459,7 +462,7 @@ class GA:
                                 self.valid_parameters = False
                                 raise TypeError("Unexpected type for a value assigned to the 'mutation_probability' parameter. A numeric value is expected but ({mutation_probability_value}) of type {mutation_probability_type} found.".format(mutation_probability_value=el, mutation_probability_type=type(el)))
                         if mutation_probability[0] < mutation_probability[1]:
-                            if not self.suppress_warnings: warnings.warn("The first element in the 'mutation_probability' parameter is {first_el} which is smaller than the second element {second_el}. This means the mutation rate for the high-quality solutions is higher than the mutation rate of the low-quality ones. This causes high disruption in the high qualitiy solutions while making little changes in the low quality solutions. Please make the first element higher than the second element.".format(first_el=mutation_probability[0], second_el=mutation_probability[1]))
+                            if not self.suppress_warnings: warnings.warn("The first element in the 'mutation_probability' parameter is {first_el} which is smaller than the second element {second_el}. This means the mutation rate for the high-quality solutions is higher than the mutation rate of the low-quality ones. This causes high disruption in the high quality solutions while making little changes in the low quality solutions. Please make the first element higher than the second element.".format(first_el=mutation_probability[0], second_el=mutation_probability[1]))
                         self.mutation_probability = mutation_probability
                     else:
                         self.valid_parameters = False
@@ -483,7 +486,7 @@ class GA:
                         # Based on the mutation percentage of genes, if the number of selected genes for mutation is less than the least possible value which is 1, then the number will be set to 1.
                         if mutation_num_genes == 0:
                             if self.mutation_probability is None:
-                                if not self.suppress_warnings: warnings.warn("The percentage of genes to mutate (mutation_percent_genes={mutation_percent}) resutled in selecting ({mutation_num}) genes. The number of genes to mutate is set to 1 (mutation_num_genes=1).\nIf you do not want to mutate any gene, please set mutation_type=None.".format(mutation_percent=mutation_percent_genes, mutation_num=mutation_num_genes))
+                                if not self.suppress_warnings: warnings.warn("The percentage of genes to mutate (mutation_percent_genes={mutation_percent}) resulted in selecting ({mutation_num}) genes. The number of genes to mutate is set to 1 (mutation_num_genes=1).\nIf you do not want to mutate any gene, please set mutation_type=None.".format(mutation_percent=mutation_percent_genes, mutation_num=mutation_num_genes))
                             mutation_num_genes = 1
 
                     elif type(mutation_percent_genes) in GA.supported_int_float_types:
@@ -500,7 +503,7 @@ class GA:
                             # Based on the mutation percentage of genes, if the number of selected genes for mutation is less than the least possible value which is 1, then the number will be set to 1.
                             if mutation_num_genes == 0:
                                 if self.mutation_probability is None:
-                                    if not self.suppress_warnings: warnings.warn("The percentage of genes to mutate (mutation_percent_genes={mutation_percent}) resutled in selecting ({mutation_num}) genes. The number of genes to mutate is set to 1 (mutation_num_genes=1).\nIf you do not want to mutate any gene, please set mutation_type=None.".format(mutation_percent=mutation_percent_genes, mutation_num=mutation_num_genes))
+                                    if not self.suppress_warnings: warnings.warn("The percentage of genes to mutate (mutation_percent_genes={mutation_percent}) resulted in selecting ({mutation_num}) genes. The number of genes to mutate is set to 1 (mutation_num_genes=1).\nIf you do not want to mutate any gene, please set mutation_type=None.".format(mutation_percent=mutation_percent_genes, mutation_num=mutation_num_genes))
                                 mutation_num_genes = 1
                     else:
                         self.valid_parameters = False
@@ -523,11 +526,11 @@ class GA:
                                 mutation_num_genes[idx] = numpy.uint32((mutation_percent_genes[idx]*self.num_genes)/100)
                                 # Based on the mutation percentage of genes, if the number of selected genes for mutation is less than the least possible value which is 1, then the number will be set to 1.
                                 if mutation_num_genes[idx] == 0:
-                                    if not self.suppress_warnings: warnings.warn("The percentage of genes to mutate ({mutation_percent}) resutled in selecting ({mutation_num}) genes. The number of genes to mutate is set to 1 (mutation_num_genes=1).\nIf you do not want to mutate any gene, please set mutation_type=None.".format(mutation_percent=mutation_percent_genes[idx], mutation_num=mutation_num_genes[idx]))
+                                    if not self.suppress_warnings: warnings.warn("The percentage of genes to mutate ({mutation_percent}) resulted in selecting ({mutation_num}) genes. The number of genes to mutate is set to 1 (mutation_num_genes=1).\nIf you do not want to mutate any gene, please set mutation_type=None.".format(mutation_percent=mutation_percent_genes[idx], mutation_num=mutation_num_genes[idx]))
                                     mutation_num_genes[idx] = 1
                             if mutation_percent_genes[0] < mutation_percent_genes[1]:
-                                if not self.suppress_warnings: warnings.warn("The first element in the 'mutation_percent_genes' parameter is ({first_el}) which is smaller than the second element ({second_el}).\nThis means the mutation rate for the high-quality solutions is higher than the mutation rate of the low-quality ones. This causes high disruption in the high qualitiy solutions while making little changes in the low quality solutions.\nPlease make the first element higher than the second element.".format(first_el=mutation_percent_genes[0], second_el=mutation_percent_genes[1]))
-                            # At this point outside the loop, all values of the parameter 'mutation_percent_genes' are validated. Eveyrthing is OK.
+                                if not self.suppress_warnings: warnings.warn("The first element in the 'mutation_percent_genes' parameter is ({first_el}) which is smaller than the second element ({second_el}).\nThis means the mutation rate for the high-quality solutions is higher than the mutation rate of the low-quality ones. This causes high disruption in the high quality solutions while making little changes in the low quality solutions.\nPlease make the first element higher than the second element.".format(first_el=mutation_percent_genes[0], second_el=mutation_percent_genes[1]))
+                            # At this point outside the loop, all values of the parameter 'mutation_percent_genes' are validated. Everything is OK.
                         else:
                             self.valid_parameters = False
                             raise ValueError("When mutation_type='adaptive', then the 'mutation_percent_genes' parameter must have only 2 elements but ({mutation_percent_genes_length}) element(s) found.".format(mutation_percent_genes_length=len(mutation_percent_genes)))
@@ -565,8 +568,8 @@ class GA:
                                 raise TypeError("Unexpected type for a value assigned to the 'mutation_num_genes' parameter. An integer value is expected but ({mutation_num_genes_value}) of type {mutation_num_genes_type} found.".format(mutation_num_genes_value=el, mutation_num_genes_type=type(el)))
                             # At this point of the loop, the current value assigned to the parameter 'mutation_num_genes' is validated.
                         if mutation_num_genes[0] < mutation_num_genes[1]:
-                            if not self.suppress_warnings: warnings.warn("The first element in the 'mutation_num_genes' parameter is {first_el} which is smaller than the second element {second_el}. This means the mutation rate for the high-quality solutions is higher than the mutation rate of the low-quality ones. This causes high disruption in the high qualitiy solutions while making little changes in the low quality solutions. Please make the first element higher than the second element.".format(first_el=mutation_num_genes[0], second_el=mutation_num_genes[1]))
-                        # At this point outside the loop, all values of the parameter 'mutation_num_genes' are validated. Eveyrthing is OK.
+                            if not self.suppress_warnings: warnings.warn("The first element in the 'mutation_num_genes' parameter is {first_el} which is smaller than the second element {second_el}. This means the mutation rate for the high-quality solutions is higher than the mutation rate of the low-quality ones. This causes high disruption in the high quality solutions while making little changes in the low quality solutions. Please make the first element higher than the second element.".format(first_el=mutation_num_genes[0], second_el=mutation_num_genes[1]))
+                        # At this point outside the loop, all values of the parameter 'mutation_num_genes' are validated. Everything is OK.
                     else:
                         self.valid_parameters = False
                         raise ValueError("When mutation_type='adaptive', then the 'mutation_num_genes' parameter must have only 2 elements but ({mutation_num_genes_length}) element(s) found.".format(mutation_num_genes_length=len(mutation_num_genes)))
@@ -587,9 +590,9 @@ class GA:
         # select_parents: Refers to a method that selects the parents based on the parent selection type specified in the parent_selection_type attribute.
         # Validating the selected type of parent selection: parent_selection_type
         if callable(parent_selection_type):
-            # Check if the parent_selection_type is a function that accepts 3 paramaters.
+            # Check if the parent_selection_type is a function that accepts 3 parameters.
             if (parent_selection_type.__code__.co_argcount == 3):
-                # population: Added in PyGAD 2.16.0. It should used only to support custom parent selection functions. Otherwise, it should be left to None to retirve the population by self.population.
+                # population: Added in PyGAD 2.16.0. It should used only to support custom parent selection functions. Otherwise, it should be left to None to retrieve the population by self.population.
                 # The parent selection function assigned to the parent_selection_type parameter is validated.
                 self.select_parents = parent_selection_type
             else:
@@ -663,7 +666,7 @@ class GA:
 
         # Check if the fitness_func is a function.
         if callable(fitness_func):
-            # Check if the fitness function accepts 2 paramaters.
+            # Check if the fitness function accepts 2 parameters.
             if (fitness_func.__code__.co_argcount == 2):
                 self.fitness_func = fitness_func
             else:
@@ -673,11 +676,22 @@ class GA:
             self.valid_parameters = False
             raise TypeError("The value assigned to the fitness_func parameter is expected to be of type function but ({fitness_func_type}) found.".format(fitness_func_type=type(fitness_func)))
 
+        # Check if the solution_func is a function.
+        if callable(solution_func):
+            # Check if the solution function accepts 2 parameters.
+            if (solution_func.__code__.co_argcount == 2):
+                self.solution_func = solution_func
+            else:
+                self.valid_parameters = False
+                raise ValueError("The solution function must accept 2 parameters:\n1) A solution to calculate its solution value.\n2) The solution's index within the population.\n\nThe passed solution function named '{funcname}' accepts {argcount} parameter(s).".format(funcname=solution_func.__code__.co_name, argcount=solution_func.__code__.co_argcount))
+        else:
+            self.solution_func = False
+
         # Check if the on_start exists.
         if not (on_start is None):
             # Check if the on_start is a function.
             if callable(on_start):
-                # Check if the on_start function accepts only a single paramater.
+                # Check if the on_start function accepts only a single parameter.
                 if (on_start.__code__.co_argcount == 1):
                     self.on_start = on_start
                 else:
@@ -693,7 +707,7 @@ class GA:
         if not (on_fitness is None):
             # Check if the on_fitness is a function.
             if callable(on_fitness):
-                # Check if the on_fitness function accepts 2 paramaters.
+                # Check if the on_fitness function accepts 2 parameters.
                 if (on_fitness.__code__.co_argcount == 2):
                     self.on_fitness = on_fitness
                 else:
@@ -709,7 +723,7 @@ class GA:
         if not (on_parents is None):
             # Check if the on_parents is a function.
             if callable(on_parents):
-                # Check if the on_parents function accepts 2 paramaters.
+                # Check if the on_parents function accepts 2 parameters.
                 if (on_parents.__code__.co_argcount == 2):
                     self.on_parents = on_parents
                 else:
@@ -725,7 +739,7 @@ class GA:
         if not (on_crossover is None):
             # Check if the on_crossover is a function.
             if callable(on_crossover):
-                # Check if the on_crossover function accepts 2 paramaters.
+                # Check if the on_crossover function accepts 2 parameters.
                 if (on_crossover.__code__.co_argcount == 2):
                     self.on_crossover = on_crossover
                 else:
@@ -741,7 +755,7 @@ class GA:
         if not (on_mutation is None):
             # Check if the on_mutation is a function.
             if callable(on_mutation):
-                # Check if the on_mutation function accepts 2 paramaters.
+                # Check if the on_mutation function accepts 2 parameters.
                 if (on_mutation.__code__.co_argcount == 2):
                     self.on_mutation = on_mutation
                 else:
@@ -757,7 +771,7 @@ class GA:
         if not (callback_generation is None):
             # Check if the callback_generation is a function.
             if callable(callback_generation):
-                # Check if the callback_generation function accepts only a single paramater.
+                # Check if the callback_generation function accepts only a single parameter.
                 if (callback_generation.__code__.co_argcount == 1):
                     self.callback_generation = callback_generation
                     on_generation = callback_generation
@@ -775,7 +789,7 @@ class GA:
         if not (on_generation is None):
             # Check if the on_generation is a function.
             if callable(on_generation):
-                # Check if the on_generation function accepts only a single paramater.
+                # Check if the on_generation function accepts only a single parameter.
                 if (on_generation.__code__.co_argcount == 1):
                     self.on_generation = on_generation
                 else:
@@ -791,7 +805,7 @@ class GA:
         if not (on_stop is None):
             # Check if the on_stop is a function.
             if callable(on_stop):
-                # Check if the on_stop function accepts 2 paramaters.
+                # Check if the on_stop function accepts 2 parameters.
                 if (on_stop.__code__.co_argcount == 2):
                     self.on_stop = on_stop
                 else:
@@ -869,7 +883,7 @@ class GA:
                 raise ValueError("For format of a single criterion in the 'stop_criteria' parameter is 'word_number' but '{stop_criteria}' found.".format(stop_criteria=stop_criteria))
 
         elif type(stop_criteria) in [list, tuple, numpy.ndarray]:
-            # Remove duplicate criterira by converting the list to a set then back to a list.
+            # Remove duplicate criteria by converting the list to a set then back to a list.
             stop_criteria = list(set(stop_criteria))
             for idx, val in enumerate(stop_criteria):
                 if type(val) is str:
@@ -916,7 +930,7 @@ class GA:
                     if parallel_processing[0] in ["process", "thread"]:
                         if (type(parallel_processing[1]) in GA.supported_int_types and parallel_processing[1] > 0) or (parallel_processing[1] == 0) or (parallel_processing[1] is None):
                             if parallel_processing[1] == 0:
-                                # If the number of processes/threads is 0, this means no parallel processing is used. It is equivelant to setting parallel_processing=None.
+                                # If the number of processes/threads is 0, this means no parallel processing is used. It is equivalent to setting parallel_processing=None.
                                 self.parallel_processing = None
                             else:
                                 # Whether the second value is None or a positive integer.
@@ -965,6 +979,10 @@ class GA:
         self.save_solutions = save_solutions
         self.solutions = [] # Holds the solutions in each generation.
         self.solutions_fitness = [] # Holds the fitness of the solutions in each generation.
+
+        self.best_solution_by_function = None
+        self.best_solution_by_function_value = None
+        self.best_solution_by_function_list = []
 
         self.last_generation_fitness = None # A list holding the fitness values of all solutions in the last generation.
         self.last_generation_parents = None # A list holding the parents of the last generation.
@@ -1204,6 +1222,12 @@ class GA:
         # Keeping the initial population in the initial_population attribute.
         self.initial_population = self.population.copy()
 
+    def check_solution_function(self, sol, sol_idx):
+        solution_value = self.solution_func(sol, sol_idx)
+        if self.best_solution_by_function_value == None or (solution_value > self.best_solution_by_function_value):
+            self.best_solution_by_function = sol.copy()
+            self.best_solution_by_function_value = solution_value
+
     def cal_pop_fitness(self):
 
         """
@@ -1237,6 +1261,10 @@ class GA:
                         pass
                     else:
                         raise ValueError("The fitness function should return a number but the value {fit_val} of type {fit_type} found.".format(fit_val=fitness, fit_type=type(fitness)))
+                    
+                    if self.solution_func:
+                        self.check_solution_function(sol, sol_idx)
+                    
                 pop_fitness[sol_idx] = fitness
         else:    
             # Calculating the fitness value of each solution in the current population.
@@ -1326,6 +1354,8 @@ class GA:
 
             # Appending the fitness value of the best solution in the current generation to the best_solutions_fitness attribute.
             self.best_solutions_fitness.append(best_solution_fitness)
+            if self.solution_func:
+                self.best_solution_by_function_list.append(self.best_solution_by_function_value)
             
             # Appending the solutions in the current generation to the solutions list.
             if self.save_solutions:
@@ -1426,7 +1456,7 @@ class GA:
             if not self.stop_criteria is None:
                 for criterion in self.stop_criteria:
                     if criterion[0] == "reach":
-                        if max(self.last_generation_fitness) >= criterion[1]:
+                        if (self.best_solution_by_function_value if self.best_solution_by_function_value != None else max(self.last_generation_fitness)) >= criterion[1]:
                             stop_run = True
                             break
                     elif criterion[0] == "saturate":
@@ -1453,6 +1483,8 @@ class GA:
         # Save the fitness value of the best solution.
         _, best_solution_fitness, _ = self.best_solution(pop_fitness=self.last_generation_fitness)
         self.best_solutions_fitness.append(best_solution_fitness)
+        if self.solution_func:
+            self.best_solution_by_function_list.append(self.best_solution_by_function_value)
 
         self.best_solution_generation = numpy.where(numpy.array(self.best_solutions_fitness) == numpy.max(numpy.array(self.best_solutions_fitness)))[0][0]
         # After the run() method completes, the run_completed flag is changed from False to True.
@@ -2004,7 +2036,7 @@ class GA:
                                                             high=self.random_mutation_max_val, 
                                                             size=1)
 
-                # Assinging the selected value from the space to the gene.
+                # Assigning the selected value from the space to the gene.
                 if self.gene_type_single == True:
                     if not self.gene_type[1] is None:
                         offspring[offspring_idx, gene_idx] = numpy.round(self.gene_type[0](value_from_space),
@@ -2440,7 +2472,7 @@ class GA:
                                                             high=self.random_mutation_max_val, 
                                                             size=1)
 
-                # Assinging the selected value from the space to the gene.
+                # Assigning the selected value from the space to the gene.
                 if self.gene_type_single == True:
                     if not self.gene_type[1] is None:
                         offspring[offspring_idx, gene_idx] = numpy.round(self.gene_type[0](value_from_space),
@@ -2525,7 +2557,7 @@ class GA:
 
         """
         Applies the adaptive mutation based on the 2 parameters 'mutation_probability' and 'gene_space'.
-        Based on whether the solution fitness is above or below a threshold, the mutation is applied diffrently by mutating high or low number of genes.
+        Based on whether the solution fitness is above or below a threshold, the mutation is applied differently by mutating high or low number of genes.
         The random values are selected based on space of values for each gene.
         It accepts a single parameter:
             -offspring: The offspring to mutate.
@@ -2613,7 +2645,7 @@ class GA:
                                                                 high=self.random_mutation_max_val, 
                                                                 size=1)
 
-                    # Assinging the selected value from the space to the gene.
+                    # Assigning the selected value from the space to the gene.
                     if self.gene_type_single == True:
                         if not self.gene_type[1] is None:
                             offspring[offspring_idx, gene_idx] = numpy.round(self.gene_type[0](value_from_space),
@@ -2637,7 +2669,7 @@ class GA:
 
         """
         Applies the adaptive mutation based on the 'mutation_probability' parameter. 
-        Based on whether the solution fitness is above or below a threshold, the mutation is applied diffrently by mutating high or low number of genes.
+        Based on whether the solution fitness is above or below a threshold, the mutation is applied differently by mutating high or low number of genes.
         The random values are selected based on the 2 parameters 'random_mutation_min_val' and 'random_mutation_max_val'.
         It accepts a single parameter:
             -offspring: The offspring to mutate.
@@ -3318,7 +3350,7 @@ class GA:
             -best_solution_fitness: Fitness value of the best solution.
             -best_match_idx: Index of the best solution in the current population.
         """
-
+        
         # Getting the best solution after finishing all generations.
         # At first, the fitness is calculated for each solution in the final generation.
         if pop_fitness is None:
@@ -3331,6 +3363,13 @@ class GA:
 
         return best_solution, best_solution_fitness, best_match_idx
 
+    def result_solution(self):
+        best_solution, best_solution_fitness, best_match_idx = self.best_solution(pop_fitness=self.last_generation_fitness)
+        if self.solution_func:
+            return self.best_solution_by_function_value, self.best_solution_by_function, best_solution_fitness, best_solution
+        else:
+            return best_solution_fitness, best_solution, best_solution_fitness, best_solution
+        
     def plot_result(self, 
                     title="PyGAD - Generation vs. Fitness", 
                     xlabel="Generation", 
@@ -3357,10 +3396,13 @@ class GA:
                     title="PyGAD - Generation vs. Fitness", 
                     xlabel="Generation", 
                     ylabel="Fitness", 
+                    ylabel_2="Solution", 
                     linewidth=3, 
+                    linewidth_2=2, 
                     font_size=14, 
                     plot_type="plot",
                     color="#3870FF",
+                    color_2="#179935",
                     save_dir=None,
                     show=True):
 
@@ -3387,15 +3429,31 @@ class GA:
 #            if not self.suppress_warnings: warnings.warn("Warning calling the plot_result() method: \nGA is not executed yet and there are no results to display. Please call the run() method before calling the plot_result() method.\n")
 
         fig = matplotlib.pyplot.figure()
-        if plot_type == "plot":
-            matplotlib.pyplot.plot(self.best_solutions_fitness, linewidth=linewidth, color=color)
-        elif plot_type == "scatter":
-            matplotlib.pyplot.scatter(range(self.generations_completed + 1), self.best_solutions_fitness, linewidth=linewidth, color=color)
-        elif plot_type == "bar":
-            matplotlib.pyplot.bar(range(self.generations_completed + 1), self.best_solutions_fitness, linewidth=linewidth, color=color)
-        matplotlib.pyplot.title(title, fontsize=font_size)
-        matplotlib.pyplot.xlabel(xlabel, fontsize=font_size)
-        matplotlib.pyplot.ylabel(ylabel, fontsize=font_size)
+        if self.solution_func:
+            matplotlib.pyplot.title(title, fontsize=font_size)
+
+            fig, axes = matplotlib.pyplot.subplots()
+
+            x = range(len(self.best_solutions_fitness))
+
+            axes.set_xlabel(xlabel, fontsize=font_size)
+            axes.set_ylabel(ylabel + ' ' + str(max(self.best_solutions_fitness)), fontsize=font_size, color=color)
+            axes.plot(x, self.best_solutions_fitness, linewidth=linewidth, color=color)
+
+            ax_2 = axes.twinx()
+            ax_2.set_ylabel(ylabel_2 + ' ' + str(max(self.best_solution_by_function_list)), color=color_2)
+            ax_2.plot(x, self.best_solution_by_function_list, linewidth=linewidth_2, color=color_2)
+        else:
+            if plot_type == "plot":
+                matplotlib.pyplot.plot(self.best_solutions_fitness, linewidth=linewidth, color=color)
+            elif plot_type == "scatter":
+                matplotlib.pyplot.scatter(range(self.generations_completed + 1), self.best_solutions_fitness, linewidth=linewidth, color=color)
+            elif plot_type == "bar":
+                matplotlib.pyplot.bar(range(self.generations_completed + 1), self.best_solutions_fitness, linewidth=linewidth, color=color)
+            
+            matplotlib.pyplot.title(title, fontsize=font_size)
+            matplotlib.pyplot.xlabel(xlabel, fontsize=font_size)
+            matplotlib.pyplot.ylabel(ylabel + ' ' + str(max(self.best_solutions_fitness)), fontsize=font_size)
         
         if not save_dir is None:
             matplotlib.pyplot.savefig(fname=save_dir, 
@@ -3403,6 +3461,7 @@ class GA:
         if show:
             matplotlib.pyplot.show()
 
+        matplotlib.pyplot.close()
         return fig
 
     def plot_new_solution_rate(self,
