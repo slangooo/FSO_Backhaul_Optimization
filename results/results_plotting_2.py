@@ -35,8 +35,8 @@ if __name__ == '__main__':
     n_drones_fig, n_drones_axs = plt.subplots()
     for _n_deg in range(res_1.shape[0]):
         for _cov_radius in range(3, res_1.shape[2], 2):
-            n_drones_axs.plot(max_fso_distance, res_1[_n_deg, :, _cov_radius], color=_colors[_n_deg],
-                              ls=_linestyles[_n_deg], marker=_markers[_cov_radius // 2 - 1], lw=1,
+            n_drones_axs.plot(max_fso_distance, res_1[_n_deg, :, _cov_radius], color=_colors[_n_deg], markersize=4,
+                              ls=_linestyles[_cov_radius // 2], marker=_markers[_cov_radius // 2 - 1], lw=1.8,
             label='$N_{\mathrm{B}}$=' + f'{min_n_degrees[_n_deg]},  ' +
                   '$R_{\mathrm{A}}$=' + f'{int(max_coverage_radius[_cov_radius] / 1e3)} Km')
 
