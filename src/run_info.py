@@ -6,11 +6,25 @@ from src.mhp.GASolution import GASolution
 # nano to mili
 N2M = 10**6
 
+def sfxft(val):
+    suffix = {0: '', 1: 'K', 2: 'M', 3: 'G', 4: 'T', 5: 'P', 6: 'E', -1: 'm', -2: 'µ', -3: 'n', -4: 'p', -5: 'f', -6: 'a'}
+
+    exp = 0
+    while abs(val) >= 1000 and exp < 6:
+        val /= 1000.0
+        exp += 1
+
+    while abs(val) < 1 and exp > -6:
+        val *= 1000.0
+        exp -= 1
+
+    return f"{round(val)}{suffix[exp]}"
+
 class Info:
 
     def __init__(self,
                  iteration, clustering_method, n_drones, ue_rate, max_fso_distance, fso_transmit_power, em_n_iters,
-                 dn : DroneNet, mbs_list, dbs_list, fitness_mode):
+                 dn : DroneNet, mbs_list, dbs_list):
         bases_bandwidth_max, bases_bandwidth_total = dn.calc_bases_bandwidth()
         edge_number = dn.edge_number()
         self.iteration              = iteration
@@ -22,7 +36,7 @@ class Info:
         self.em_n_iters             = em_n_iters
         self.mbs                    = len(mbs_list)
         self.dbs                    = len(dbs_list)
-        self.fitness_mode           = fitness_mode
+        self.fitness_mode           = 'off'
         self.edges                  = edge_number
         self.avg_degree             = 2 * edge_number / (len(mbs_list) + len(dbs_list))
         self.total_node_bandwidth   = sum(dn.bandwidth)
@@ -32,8 +46,36 @@ class Info:
         self.avg_edge_bandwidth     = (sum(sum(node_net) for node_net in dn.net) / 2) / edge_number if edge_number else 0
         self.avg_bandwidth_per_base = sum(dn.bandwidth) / len(mbs_list)
 
-    def appendExactSolution(self, exactSolution : ExactSolution): self.exactSolution = exactSolution
-    def appendGASolution   (self,    gaSolution :    GASolution): self.   gaSolution =    gaSolution
+        self.exactSolution = ExactSolution(
+            stopType             = 'none',
+            found                = False,
+            firstTime            = 0,
+            fullTime             = 0,
+            firstCorrectInstance = 0,
+            processedInstances   = 0,
+            results              = [],
+            mode                 = 'NONE')
+
+        self.gaSolution = GASolution(
+            ga = None,
+            generations_runs = 0,
+            total_runs = 0,
+            positive_runs = 0,
+            found = False,
+            time = 0,
+            score = -1,
+            result = None,
+            first_time = 0,
+            first_score = 0,
+            first_result = 0,
+            runs = 0)
+
+    def setExactSolution(self, exactSolution : ExactSolution):
+        self.exactSolution = exactSolution
+
+    def setGASolution(self, fitness_mode, gaSolution : GASolution):
+        self.fitness_mode = fitness_mode
+        self.gaSolution = gaSolution
 
     def exact_solutions (self): return len(self.exactSolution.results)
     def exact_score     (self): return self.exactSolution.bestScore
@@ -62,7 +104,7 @@ class Info:
         msg += ' ' + 'iteration'              + ' = ' + str(      self.iteration                                 ).rjust(2)
         msg += ' ' + 'clustering_method'      + ' = ' + str(      self.clustering_method                         ).rjust(1)
         msg += ' ' + 'n_drones'               + ' = ' + str(      self.n_drones                                  ).rjust(2)
-        msg += ' ' + 'ue_rate'                + ' = ' + str(      self.ue_rate                                   )
+        msg += ' ' + 'ue_rate'                + ' = ' + str(sfxft(self.ue_rate                                 ) ).rjust(5)
         msg += ' ' + 'max_dist'               + ' = ' + str(      self.max_dist                                  ).rjust(5)
         msg += ' ' + 'power'                  + ' = ' + str(      self.power                                     )
         msg += ' ' + 'em_n_iters'             + ' = ' + str(      self.em_n_iters                                ).rjust(2)

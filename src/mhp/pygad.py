@@ -3461,7 +3461,7 @@ class GA:
         if show:
             matplotlib.pyplot.show()
 
-        matplotlib.pyplot.close()
+        matplotlib.pyplot.close('all')
         return fig
 
     def plot_new_solution_rate(self,

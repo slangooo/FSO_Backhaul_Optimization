@@ -46,7 +46,7 @@ RANDOMIZE_MBS_LOCS = False
 COVERAGE_RADIUS = 2000000
 ###########################################
 
-SKIP_UE_RF_UPDATE = True
+SKIP_UE_RF_UPDATE = False
 #Obstacles
 EXTEND_TIMES_FOUR = True
 

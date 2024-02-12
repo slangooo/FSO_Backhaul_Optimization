@@ -170,7 +170,7 @@ class GenAlg:
             ga.run()
 
             if self.fitness_draw:
-                ga.plot_fitness(show=False, save_dir= self.fitness_draw + '_fitness_' + str(total_runs + 1) + '.png')
+                ga.plot_fitness(show=False, save_dir = self.fitness_draw + '_' + str(total_runs + 1) + '.png')
 
             executionTime = perf_counter_ns() - start
             
