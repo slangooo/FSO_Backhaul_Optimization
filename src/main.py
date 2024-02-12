@@ -120,7 +120,7 @@ def perform_simulation_run_main(test_iteration, n_drones, ue_rate=ue_rate, max_f
     sim.set_drones_number(n_drones)
     sim.reset_users_model()
     if CLUSTERING_METHOD < 2:
-        em_n_iters = sim.localize_drones(CLUSTERING_METHOD) #Here we can pass 1 to force using Kmeans
+        em_n_iters = sim.localize_drones(CLUSTERING_METHOD, n_dbs=n_drones) #Here we can pass 1 to force using Kmeans
     else:
         em_n_iters = 0
     print("EM iters:", em_n_iters)
@@ -219,14 +219,14 @@ if __name__ == '__main__':
     #
     # #Locate DBSs according to EM algorithm which optimizes channel quality.
     # # Select which clustering method {0: SINR-EM, 1- Kmeans, 2- hierarchical}
-    sim_ctrl.localize_drones(CLUSTERING_METHOD)
+    sim_ctrl.localize_drones(CLUSTERING_METHOD, n_dbs=NUM_UAVS)
     #
     # #If we plot again we can see new DBSs locations
-    sim_ctrl.get_fso_capacities()
-    fig, _ = sim_ctrl.generate_plot()
-    fig.savefig(os.path.join(r'C:\Users\user\Desktop\Own Papers\Backhaul Optimization\Paper', f'network_example_.eps'), format='eps')
-    fig.savefig(os.path.join(r'C:\Users\user\Desktop\Own Papers\Backhaul Optimization\Paper', f'network_example_.png'), format='png')
-    fig.show()
+    # sim_ctrl.get_fso_capacities()
+    # fig, _ = sim_ctrl.generate_plot()
+    # fig.savefig(os.path.join(r'C:\Users\user\Desktop\Own Papers\Backhaul Optimization\Paper', f'network_example_.eps'), format='eps')
+    # fig.savefig(os.path.join(r'C:\Users\user\Desktop\Own Papers\Backhaul Optimization\Paper', f'network_example_.png'), format='png')
+    # fig.show()
     #
     # #Calculate FSO link capacities for current locations
     # sim_ctrl.get_fso_capacities()
