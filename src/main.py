@@ -194,117 +194,43 @@ def perform_simulation_run_main(test_iteration, n_drones, ue_rate=ue_rate, max_f
 
 
 ################################################ SIMULATION
-    #
-    # run_idx = 3
-    # continue_sim = False
-    #
-    # def update_run_params(iter_idx=1):
-    #     run_params = [n_drones_total, ue_rate, max_fso_distance, fso_transmit_power, iter_idx]
-    #     with open(results_folder + f"params_run{run_idx}.pkl", 'wb') as f:
-    #         pickle.dump(run_params, f)
-    #
-    # if continue_sim:
-    #     res = np.load(results_folder + f'results_of_run{run_idx}.npy')
-    #     with open(results_folder + f"params_run{run_idx}.pkl", 'rb') as f:
-    #         run_params = pickle.load(f)
-    #     start_iter = run_params[-1] + 1
-    #     assert (start_iter > 1)
-    # else:
-    #     start_iter = 1
-    #
-    # res_iter = np.zeros((8, len(n_drones_total), len(ue_rate), len(max_fso_distance), len(fso_transmit_power)))
-    # for test_iteration in range(start_iter, NUM_ITER + 1):
-    #     print(f"iteration {test_iteration}")
-    #     for n_drone_idx, _n_drones in enumerate(n_drones_total):
-    #         print("N Drones =", _n_drones)
-    #         res_iter[:, n_drone_idx, :, :, :] = perform_simulation_run_main(test_iteration=test_iteration,
-    #                                                                         n_drones=_n_drones)
-    #     if np.isnan(res_iter).any():
-    #         print("FOUND NAN!")
-    #         break
-    #     if test_iteration == 1:
-    #         res = res_iter.copy()
-    #     else:
-    #         res = res + (res_iter - res) / test_iteration
-    #     np.save(results_folder + f'results_of_run{run_idx}', res)
-    #     update_run_params(test_iteration + 1)
-    # np.save(results_folder + f'results_of_run{run_idx}', res)
-    #
-    # # res = perform_simulation_run_main(7, ue_rate, max_fso_distance, fso_transmit_power)
-    # # res = sim.perform_simulation_run()
-################################################################################################# Introduction
-    # #Initialize simulation controller with UE distributed in clusters,
-    # # and UAVs distributed randomly, and Macro base stations located according
-    # # to settings in parameters.py (MBS_LOCATIONS)
 def test():
-    sim_ctrl = Simulator()
-    #
-    # #Generate random MBS lcoations
-    # sim_ctrl.randomize_mbs_locs()
-    #
-    # #Generate plot and show UEs, DBSs, and MBSs
-    # fig, _ = sim_ctrl.generate_plot()
-    # fig.show()
-    #
-    # #Locate DBSs according to EM algorithm which optimizes channel quality.
-    # # Select which clustering method {0: SINR-EM, 1- Kmeans, 2- hierarchical}
-    sim_ctrl.localize_drones(CLUSTERING_METHOD)
-    #
-    # #If we plot again we can see new DBSs locations
-    sim_ctrl.get_fso_capacities()
+    run_idx = 3
+    continue_sim = False
     
-    fig, _ = sim_ctrl.generate_plot()
-    fig.savefig(os.path.join(results_folder, 'network_example_.eps'), format='eps')
-    fig.savefig(os.path.join(results_folder, 'network_example_.png'), format='png')
-    fig.show()
-    #
-    # #Calculate FSO link capacities for current locations
-    # sim_ctrl.get_fso_capacities()
-    #
-    # # Plot FSO capacities graph with capacity requirement of each cluster
-    # fig_fso = sim_ctrl.generate_plot_capacs()
-    # fig_fso.show()
-    #
-    # # #Call this to generate new UEs distribution
-    # # sim_ctrl.reset_users_model()
-    #
-    # #The controller has the MBSs and DBSs in self.base_stations
-    # #The MBSs are in the slice [:NUM_MBS] and DBSs are in [NUM_MBS:]
-    # mbs_list = sim_ctrl.base_stations[:NUM_MBS]
-    # dbs_list = sim_ctrl.base_stations[NUM_MBS:]
-    #
-    # #Each DBS has coords attribute (which can also behave like numpy array)
-    # print(dbs_list[0].coords.x, dbs_list[0].coords.y, dbs_list[0].coords.z)
-    # np.sum(dbs_list[0].coords)
-    #
-    # #Alternatively we can get locations of all DBSs as arrays
-    # print(sim_ctrl.get_uavs_locs())
-    # print(np.sum(sim_ctrl.get_uavs_locs(), 1)) # just to show it behaves like array
-    #
-    # #We can also get the FSO capacities as 2D array where the indexes are indexes of DBSs.
-    # # I.e., element i,j s.t. i=j is redundant. Otherwise the array show the capacity between the ith DBS and jth DBS
-    # print(sim_ctrl.fso_links_capacs)
-    #
-    # #To get required capacity from UEs load per DBS
-    # print(sim_ctrl.get_required_capacity_per_dbs())
-    #
-    # # Construct drone net
-    # dn = DroneNet.createArea(mbs_list, dbs_list, sim_ctrl.get_required_capacity_per_dbs(), sim_ctrl.fso_links_capacs)
-    # dn.print()
+    Info.csv_header()
 
-    #Exact solution, long time
-    # if CALCULATE_EXACT_FSO_NET_SOLUTION:
-    #     exactSolution = dn.lookForChainSolution(first=False, mode='bestNodes')
-    #     exactSolution.print()
-    #     if exactSolution.found:
-    #         ga = GenAlg(timeLimit=FSO_NET_GENECTIC_ALGORITHM_TIME_LIMIT)
-    #         gaSolution = ga.run(dn)
-    #         gaSolution.print(exactSolution)
-    # else:
-    #     ga = GenAlg(timeLimit=FSO_NET_GENECTIC_ALGORITHM_TIME_LIMIT)
-    #     gaSolution = ga.run(dn)
-    #     #gaSolution.print(draw = True, drawFileName = 'FSO_net_ga_solution')
-    #     gaSolution.print()
+    def update_run_params(iter_idx=1):
+        run_params = [n_drones_total, ue_rate, max_fso_distance, fso_transmit_power, iter_idx]
+        with open(results_folder + f"params_run{run_idx}.pkl", 'wb') as f:
+            pickle.dump(run_params, f)
+
+    if continue_sim:
+        res = np.load(results_folder + f'results_of_run{run_idx}.npy')
+        with open(results_folder + f"params_run{run_idx}.pkl", 'rb') as f:
+            run_params = pickle.load(f)
+        start_iter = run_params[-1] + 1
+        assert (start_iter > 1)
+    else:
+        start_iter = 1
+
+    res_iter = np.zeros((8, len(n_drones_total), len(ue_rate), len(max_fso_distance), len(fso_transmit_power)))
+    for test_iteration in range(start_iter, NUM_ITER + 1):
+        print(f"iteration {test_iteration}")
+        for n_drone_idx, _n_drones in enumerate(n_drones_total):
+            print("N Drones =", _n_drones)
+            res_iter[:, n_drone_idx, :, :, :] = perform_simulation_run_main(test_iteration=test_iteration, n_drones=_n_drones)
+        if np.isnan(res_iter).any():
+            print("FOUND NAN!")
+            break
+        if test_iteration == 1:
+            res = res_iter.copy()
+        else:
+            res = res + (res_iter - res) / test_iteration
+        np.save(results_folder + f'results_of_run{run_idx}', res)
+        update_run_params(test_iteration + 1)
+    np.save(results_folder + f'results_of_run{run_idx}', res)
+
 
 def byDroneNumberAndFsoDistance(iterations, n_dbs_list, max_fso_distances, fso_transmit_powers, ue_rates, ga_fitness_modes):
     for iter in range(iterations):
@@ -332,7 +258,7 @@ def byDroneNumberAndFsoDistance(iterations, n_dbs_list, max_fso_distances, fso_t
 
 if __name__ == '__main__':
     args = sys.argv[1:]
-    method = 'byDroneNumberAndFsoDistance' if not args else args[0]
+    method = 'test' if not args else args[0]
     
     if method == 'test':
         test()
