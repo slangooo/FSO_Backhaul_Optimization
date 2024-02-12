@@ -1,0 +1,6 @@
+/results/data
+/.idea
+/.project
+/.pydevproject
+/out
+__pycache__/

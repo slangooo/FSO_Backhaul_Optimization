@@ -52,7 +52,6 @@ import warnings
 from scipy.cluster.hierarchy import fcluster, cut_tree, dendrogram, to_tree
 from src.users import User
 from src.environment.user_modeling import ThomasClusterProcess
-import cv2
 
 warnings.filterwarnings("error", category=RuntimeWarning)
 

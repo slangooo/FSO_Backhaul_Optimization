@@ -223,9 +223,10 @@ if __name__ == '__main__':
     #
     # #If we plot again we can see new DBSs locations
     sim_ctrl.get_fso_capacities()
+    
     fig, _ = sim_ctrl.generate_plot()
-    fig.savefig(os.path.join(r'C:\Users\user\Desktop\Own Papers\Backhaul Optimization\Paper', f'network_example_.eps'), format='eps')
-    fig.savefig(os.path.join(r'C:\Users\user\Desktop\Own Papers\Backhaul Optimization\Paper', f'network_example_.png'), format='png')
+    fig.savefig(os.path.join(results_folder, 'network_example_.eps'), format='eps')
+    fig.savefig(os.path.join(results_folder, 'network_example_.png'), format='png')
     fig.show()
     #
     # #Calculate FSO link capacities for current locations
