@@ -538,7 +538,7 @@ class DroneNet:
         solution = list(range(self.drone_number))
         numpy.random.shuffle(solution)
         
-        indices = numpy.random.choice(self.drone_number, self.base_number - 1, replace=False)
+        indices = numpy.random.choice(max(self.drone_number, self.base_number - 1), self.base_number - 1, replace=False)
         indices.sort()
         for i, idx in enumerate(indices):
             solution.insert(idx + i, self.drone_number + i)

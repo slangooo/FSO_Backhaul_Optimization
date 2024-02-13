@@ -167,7 +167,7 @@ def perform_simulation_run_main(test_iteration, n_drones, ue_rate=ue_rate, max_f
     sim.set_drones_number(n_drones)
     sim.reset_users_model()
     if CLUSTERING_METHOD < 2:
-        em_n_iters = sim.localize_drones(CLUSTERING_METHOD)  # Here we can pass 1 to force using Kmeans
+        em_n_iters = sim.localize_drones(CLUSTERING_METHOD, n_dbs=n_drones)  # Here we can pass 1 to force using Kmeans
     else:
         em_n_iters = 0
     print("EM iters:", em_n_iters)

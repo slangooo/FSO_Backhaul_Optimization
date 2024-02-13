@@ -252,7 +252,7 @@ class SimulationController:
             initial_coords = Coords3d(initial_coords[0], initial_coords[1], drone_height)
             # initial_coords = Coords3d(2, 215, 25)
             new_station = DroneStation(coords=initial_coords, irradiation_manager=irradiation_manager,
-                                       drone_id=i + 1)  # ,
+                                       drone_id=self.base_stations[-1].id + 1)
             # carrier_frequency=UAVS_FREQS[i])
             self.base_stations.append(new_station)
         self.base_stations = self.base_stations

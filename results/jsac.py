@@ -106,7 +106,7 @@ def perform_simulation_run_main(test_iteration, n_drones, ue_rate=20, max_fso_di
 
 def run_clustering_nb(min_n_degrees, max_fso_distance, max_coverage_radius):
     sim = Simulator()
-    sim.randomize_mbs_locs()
+    # sim.randomize_mbs_locs()
     sim.reset_users_model()
     results = np.zeros_like(np.meshgrid(min_n_degrees, max_fso_distance, max_coverage_radius, indexing='ij')[0])
     for deg_idx, _n_degrees in enumerate(min_n_degrees):
@@ -170,7 +170,7 @@ def run_ga(sim, fitness_mode):
 
 def run_iter(min_n_degrees, max_fso_distance, max_coverage_radius, fitness_method):
     sim = Simulator()
-    sim.randomize_mbs_locs()
+    # sim.randomize_mbs_locs()
     sim.reset_users_model()
     results_hc = np.zeros_like(np.meshgrid(min_n_degrees, max_fso_distance, max_coverage_radius, indexing='ij')[0])
     results_km = np.zeros_like(np.meshgrid(min_n_degrees, max_fso_distance, max_coverage_radius, indexing='ij')[0])
@@ -181,28 +181,28 @@ def run_iter(min_n_degrees, max_fso_distance, max_coverage_radius, fitness_metho
             for cov_idx, _max_coverage_radius in enumerate(max_coverage_radius):
                 not_run = True
                 while not_run:
-                    try:
-                        n_drones = sim.localize_drones(_method=2, max_fso_distance=_max_fso_distance,
-                                                       min_n_degrees=_n_degrees,
-                                                       max_coverage_radius=_max_coverage_radius, set_n_dbs_min=True)
+                    # try:
+                    n_drones = sim.localize_drones(_method=2, max_fso_distance=_max_fso_distance,
+                                                   min_n_degrees=_n_degrees,
+                                                   max_coverage_radius=_max_coverage_radius, set_n_dbs_min=True)
 
-                        gaSolution = run_ga(sim, fitness_method)
-                        results_hc[deg_idx, fso_idx, cov_idx] = gaSolution.score
+                    gaSolution = run_ga(sim, fitness_method)
+                    results_hc[deg_idx, fso_idx, cov_idx] = gaSolution.score
 
-                        sim.localize_drones(_method=1, max_fso_distance=_max_fso_distance,
-                                            min_n_degrees=_n_degrees,
-                                            max_coverage_radius=_max_coverage_radius, n_dbs=n_drones)
+                    sim.localize_drones(_method=1, max_fso_distance=_max_fso_distance,
+                                        min_n_degrees=_n_degrees,
+                                        max_coverage_radius=_max_coverage_radius, n_dbs=n_drones)
 
-                        gaSolution = run_ga(sim, fitness_method)
-                        results_km[deg_idx, fso_idx, cov_idx] = gaSolution.score
-                        results_n_drones[deg_idx, fso_idx, cov_idx] = n_drones
-                        not_run = False
-                    except Exception as e:
-                        print("Error!  ", n_drones)
-                        traceback.print_exc()
-                        sim.localize_drones(_method=2, max_fso_distance=_max_fso_distance,
-                                            min_n_degrees=_n_degrees,
-                                            max_coverage_radius=_max_coverage_radius)
+                    gaSolution = run_ga(sim, fitness_method)
+                    results_km[deg_idx, fso_idx, cov_idx] = gaSolution.score
+                    results_n_drones[deg_idx, fso_idx, cov_idx] = n_drones
+                    not_run = False
+                    # except Exception as e:
+                    #     print("Error!  ", n_drones)
+                    #     traceback.print_exc()
+                        # sim.localize_drones(_method=2, max_fso_distance=_max_fso_distance,
+                        #                     min_n_degrees=_n_degrees,
+                        #                     max_coverage_radius=_max_coverage_radius)
 
 
 
