@@ -4,3 +4,4 @@
 /.pydevproject
 /out
 __pycache__/
+src/pwtest.py

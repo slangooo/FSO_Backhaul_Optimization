@@ -88,16 +88,25 @@ class Info:
         return self.exactSolution.found or self.gaSolution.found
 
     def score_percentage(self):
-        if self.gaSolution.score > 0:
+        if self.gaSolution.score >= 0:
             if self.exactSolution.bestScore > 0:
-                return 100 * self.gaSolution.score / self.exactSolution.bestScore
+                return round(100 * self.gaSolution.score / self.exactSolution.bestScore)
+            elif self.exactSolution.bestScore == 0:
+                return 900
             else:
                 return 999
-        else:
-            if self.exactSolution.bestScore > 0:
-                return 0
-            else:
+        elif self.gaSolution.score == 0:
+            if self.exactSolution.bestScore >= 0:
+                return 1
+            elif self.exactSolution.bestScore == 0:
                 return 100
+            else:
+                return 0
+        else:
+            if self.exactSolution.bestScore >= 0:
+                return -1
+            else:
+                return 0
 
     def msg(self):
         msg = '.' if self.found() else 'X'
@@ -106,30 +115,30 @@ class Info:
         msg += ' ' + 'n_drones'               + ' = ' + str(      self.n_drones                                  ).rjust(2)
         msg += ' ' + 'ue_rate'                + ' = ' + str(sfxft(self.ue_rate                                 ) ).rjust(5)
         msg += ' ' + 'max_dist'               + ' = ' + str(      self.max_dist                                  ).rjust(5)
-        msg += ' ' + 'power'                  + ' = ' + str(      self.power                                     )
+        msg += ' ' + 'power'                  + ' = ' + str(      self.power                                     ).rjust(3)
         msg += ' ' + 'em_n_iters'             + ' = ' + str(      self.em_n_iters                                ).rjust(2)
-        msg += ' ' + 'mbs'                    + ' = ' + str(      self.mbs                                       )
-        msg += ' ' + 'dbs'                    + ' = ' + str(      self.dbs                                       ).rjust(2)
-        msg += ' ' + 'fitness_mode'           + ' = ' + str(      self.fitness_mode                              )
+        msg += ' ' + 'mbs'                    + ' = ' + str(      self.mbs                                       ).rjust(2)
+        msg += ' ' + 'dbs'                    + ' = ' + str(      self.dbs                                       ).rjust(3)
+        msg += ' ' + 'fitness_mode'           + ' = ' + str(      self.fitness_mode                              ).rjust(3)
         msg += ' ' + 'total_node_bandwidth'   + ' = ' + str(      self.total_node_bandwidth                      ).rjust(7)
         msg += ' ' + 'bases_bandwidth_max'    + ' = ' + str(      self.bases_bandwidth_max                       ).rjust(7)
         msg += ' ' + 'bases_bandwidth_total'  + ' = ' + str(      self.bases_bandwidth_total                     ).rjust(7)
         msg += ' ' + 'avg_node_bandwidth'     + ' = ' + str(round(self.avg_node_bandwidth                      ) ).rjust(6)
-        msg += ' ' + 'avg_degree'             + ' = ' + str(   f"{self.avg_degree                          :.1f}").rjust(3)
+        msg += ' ' + 'avg_degree'             + ' = ' + str(   f"{self.avg_degree                          :.1f}").rjust(4)
         msg += ' ' + 'edges'                  + ' = ' + str(      self.edges                                     ).rjust(4)
         msg += ' ' + 'avg_edge_bandwidth'     + ' = ' + str(round(self.avg_edge_bandwidth                      ) ).rjust(5)
         msg += ' ' + 'avg_bandwidth_per_base' + ' = ' + str(round(self.avg_bandwidth_per_base                  ) ).rjust(5)
         msg += ' ' + 'exFullTime'             + ' = ' + str(round(self.exactSolution.fullTime               /N2M)).rjust(8)
         msg += ' ' + 'exFirstTime'            + ' = ' + str(round(self.exactSolution.firstTime              /N2M)).rjust(8)
-        msg += ' ' + 'exProcessedInstances'   + ' = ' + str(      self.exactSolution.processedInstances          ).rjust(5)
+        msg += ' ' + 'exProcessedInstances'   + ' = ' + str(      self.exactSolution.processedInstances          ).rjust(7)
         msg += ' ' + 'exFirstCorrectInstance' + ' = ' + str(      self.exactSolution.firstCorrectInstance        ).rjust(5)
         msg += ' ' + 'exSolutions'            + ' = ' + str(      self.exact_solutions                   ()      ).rjust(4)
-        msg += ' ' + 'exScore'                + ' = ' + str(      self.exact_score                       ()      ).rjust(7)
+        msg += ' ' + 'exScore'                + ' = ' + str(      self.exact_score                       ()      ).rjust(9)
         msg += ' ' + 'exMode'                 + ' = ' + str(      self.exactSolution.mode                        ).rjust(6)
         msg += ' ' + 'exStopType'             + ' = ' + str(      self.exactSolution.stopType                    ).rjust(6)
         msg += ' ' + 'gaTime'                 + ' = ' + str(round(self.ga_time                           () /N2M)).rjust(8)
         msg += ' ' + 'gaGenerations'          + ' = ' + str(      self.gaSolution.generations_runs               ).rjust(8)
-        msg += ' ' + 'gaScore'                + ' = ' + str(      self.ga_score                          ()      ).rjust(7)
+        msg += ' ' + 'gaScore'                + ' = ' + str(      self.ga_score                          ()      ).rjust(9)
         msg += ' ' + 'score_percentage'       + ' = ' + str(      self.score_percentage                  ()      ).rjust(3)
         return msg
 

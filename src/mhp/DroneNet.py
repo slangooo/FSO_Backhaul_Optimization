@@ -538,10 +538,11 @@ class DroneNet:
         solution = list(range(self.drone_number))
         numpy.random.shuffle(solution)
         
-        indices = numpy.random.choice(max(self.drone_number, self.base_number - 1), self.base_number - 1, replace=False)
-        indices.sort()
+        indices = random.sample(range(self.drone_number + 1), self.base_number - 1)
+        indices = [random.randint(0, self.drone_number) for _ in range(self.base_number - 1)]
+        indices.sort(reverse=True)
         for i, idx in enumerate(indices):
-            solution.insert(idx + i, self.drone_number + i)
+            solution.insert(idx, self.drone_number + self.base_number - 2 - i)
         
         return solution
     
