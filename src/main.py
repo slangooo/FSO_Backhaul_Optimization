@@ -240,15 +240,22 @@ def test():
     np.save(results_folder + f'results_of_run{run_idx}', res)
 
 
-def byDroneNumberAndFsoDistance(iterations, n_dbs_list, max_fso_distances, fso_transmit_powers, ue_rates,
-                                ga_fitness_modes):
+def byDroneNumberAndFsoDistance(
+        iterations,
+        n_dbs_list,
+        max_fso_distances,
+        fso_transmit_powers,
+        ue_rates,
+        ga_fitness_modes):
+    if SAVE_MHP_DATA:
+        Info.csv_header()
     for iter in range(iterations):
         sim = Simulator()
 
         for n_dbs in n_dbs_list:
             for max_fso_distance in max_fso_distances:
                 sim.localize_drones(
-                    _method=3,  # CLUSTERING_METHOD
+                    _method=2,  # CLUSTERING_METHOD
                     n_dbs=n_dbs,
                     max_fso_distance=max_fso_distance,
                     min_n_degrees=2)  # MIN_N_DEGREES
@@ -274,10 +281,10 @@ if __name__ == '__main__':
         test()
     elif method == 'byDroneNumberAndFsoDistance':
         byDroneNumberAndFsoDistance(
-            iterations=2,
-            n_dbs_list=[12, 16],  # range(20, 51, 5)
-            max_fso_distances=[3000, 4000],  # range(3000, 4001, 20)
-            fso_transmit_powers=[0.2, 0.3],
-            ue_rates=[5e6, 1e7],
-            ga_fitness_modes=['NVP', 'ENP']
+            iterations          = 9,
+            n_dbs_list          = range(20, 99, 5), # range(20, 51, 5)
+            max_fso_distances   = range(2000, 3001, 100),
+            fso_transmit_powers = [0.1, 0.2, 0.3],
+            ue_rates            = [2e7, 3e7, 4e7, 5e7], #[5e6, 7e6, 9e6],
+            ga_fitness_modes    = ['ENP', 'EVP', 'EEP', 'NNP', 'NVP', 'NEP']
         )

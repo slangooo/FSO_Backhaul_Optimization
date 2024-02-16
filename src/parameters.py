@@ -158,14 +158,14 @@ CALCULATE_EXACT_FSO_NET_SOLUTION = True
 # Limit calculation of exact solution to given time (seconds), 0 if not used
 CALCULATE_EXACT_FSO_NET_SOLUTION_TIME_LIMIT = 0
 # Limit calculation of exact solution to given number of instances, 0 if not used
-CALCULATE_EXACT_FSO_NET_SOLUTION_INSTANCE_LIMIT = 1000000
+CALCULATE_EXACT_FSO_NET_SOLUTION_INSTANCE_LIMIT = 10000000
 # Limit calculation of exact solution to the first one, still exponential time
 CALCULATE_EXACT_FSO_NET_SOLUTION_FIRST_ONLY = False
 # Calculate solution for drone FSO connection by genetic algorithm
 RUN_GENECTIC_ALGORITHM = True
 # Limit calculation of genetic solution to the first one
 FSO_NET_GENECTIC_ALGORITHM_GENERATE_FIRST_ONLY = False
-# Mode of fitness function in Genetic Algorithm, one of:
+# Mode of fitness function in Genetic Algorithm, one of ENP EVP EEP NNP NVP NEP:
 #    ENP : Edge Surplus Without Penalty            : fitness function based on edge surplus without penalty
 #    EVP : Edge Surplus with Value Penalty         : fitness function based on edge surplus with a penalty value
 #    EEP : Edge Surplus with Edge Deficits Penalty : fitness function based on edge surplus with a penalty corresponding to deficits on edge flows
@@ -174,15 +174,15 @@ FSO_NET_GENECTIC_ALGORITHM_GENERATE_FIRST_ONLY = False
 #    NEP : Node Surplus with Edge Deficits Penalty : fitness function based on node surplus with a penalty corresponding to deficits on edge flows
 GENECTIC_ALGORITHM_FITNESS_MODE = 'NVP'
 # Total number of individual solutions present in the population
-GENECTIC_ALGORITHM_POPULATION_SIZE = 1000
+GENECTIC_ALGORITHM_POPULATION_SIZE = 400
 # Time limit in seconds for genetic algorithm searching solution for FSO net
 FSO_NET_GENECTIC_ALGORITHM_TIME_LIMIT = 0
 # Generations limit for genetic algorithm searching solution for FSO net
-FSO_NET_GENECTIC_ALGORITHM_GENERATION_LIMIT = 300
+FSO_NET_GENECTIC_ALGORITHM_GENERATION_LIMIT = 400
 # For true store extra information about MHP runs
 SAVE_MHP_DATA = True
 # For true store figures for area and network
-SAVE_FIG = True
+SAVE_FIG = False
 # For true store instance of drone network
 SAVE_INSTANCE = True
 # If set to any int != 0 the max_fso_distance is calculated to value that produce graph with average vertex degree equal to this value
