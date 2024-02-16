@@ -5,3 +5,5 @@
 /out
 __pycache__/
 src/pwtest.py
+pw.ipynb
+results/ga/
